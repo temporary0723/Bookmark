@@ -1184,7 +1184,32 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         const errorText = await saveResponse.text();
                         console.error(`[Bookmark] 저장 오류 응답:`, errorText);
                     } else {
-                        console.log(`[Bookmark] 메타데이터 저장 성공`);
+                        const saveResult = await saveResponse.text();
+                        console.log(`[Bookmark] 메타데이터 저장 응답:`, saveResult);
+                        
+                        // 저장 후 검증을 위해 다시 불러와서 확인
+                        console.log(`[Bookmark] 저장 검증을 위해 채팅 데이터 다시 확인...`);
+                        const verifyResponse = await fetch('/api/chats/get', {
+                            method: 'POST',
+                            headers: getRequestHeaders(),
+                            body: JSON.stringify({
+                                ch_name: targetCharacter.name,
+                                file_name: chatData.fileName.replace('.jsonl', ''),
+                                avatar_url: targetCharacter.avatar
+                            })
+                        });
+                        
+                        if (verifyResponse.ok) {
+                            const verifyData = await verifyResponse.json();
+                            if (Array.isArray(verifyData) && verifyData.length > 0) {
+                                const verifyMetadata = verifyData[0].chat_metadata || verifyData[0];
+                                const verifyBookmarks = verifyMetadata[BOOKMARK_METADATA_KEY] || [];
+                                console.log(`[Bookmark] 저장 검증 결과: ${verifyBookmarks.length}개 북마크 확인됨`);
+                                if (verifyBookmarks.length !== mergedBookmarks.length) {
+                                    console.error(`[Bookmark] 저장 검증 실패! 예상: ${mergedBookmarks.length}개, 실제: ${verifyBookmarks.length}개`);
+                                }
+                            }
+                        }
                     }
                     
                     processedChats++;
