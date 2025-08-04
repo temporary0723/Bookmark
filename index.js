@@ -280,6 +280,9 @@ async function deleteAllBookmarksFromAllCharacters() {
         extension_settings[pluginName].bookmarkIndex = {};
         saveSettingsDebounced();
         
+        // 현재 채팅의 북마크 상태를 메타데이터에서 다시 로드하여 완전히 동기화
+        loadBookmarks(); // 메타데이터가 삭제되었으므로 빈 배열이 로드됨
+        
         // UI 새로고침
         refreshBookmarkIcons();
         
@@ -291,8 +294,10 @@ async function deleteAllBookmarksFromAllCharacters() {
         
         console.log(`[Bookmark] 전체 삭제 완료 - 캐릭터: ${deletedCharacters}, 채팅: ${deletedChats}, 오류: ${totalErrors}`);
         
-        // 모달 새로고침
-        refreshBookmarkListInModal();
+        // 모달 새로고침 (메타데이터 로드 완료 후 업데이트)
+        setTimeout(() => {
+            refreshBookmarkListInModal();
+        }, 100);
         
     } catch (error) {
         console.error('[Bookmark] 전체 삭제 중 오류:', error);
@@ -373,7 +378,7 @@ function loadBookmarks() {
         
         if (savedBookmarks && Array.isArray(savedBookmarks)) {
             bookmarks = savedBookmarks;
-            console.log(`[Bookmark] 현재 채팅에서 ${bookmarks.length}개의 책갈피를 로드했습니다.`);
+            console.log(`[Bookmark] 현재 채팅에서 ${bookmarks.length}개의 책갈피를 로드했습니다. (캐릭터: ${context.characterId}, 채팅: ${context.chatId})`);
             if (bookmarks.length > 0) {
                 console.log(`[Bookmark] 첫 번째 책갈피 예시:`, {
                     id: bookmarks[0].id,
@@ -383,7 +388,7 @@ function loadBookmarks() {
             }
         } else {
             bookmarks = [];
-            console.log('[Bookmark] 현재 채팅에 저장된 책갈피가 없습니다. 빈 배열로 초기화.');
+            console.log(`[Bookmark] 현재 채팅에 저장된 책갈피가 없습니다. 빈 배열로 초기화. (캐릭터: ${context.characterId}, 채팅: ${context.chatId})`);
         }
     } catch (error) {
         console.error('북마크 로드 실패:', error);
@@ -604,10 +609,11 @@ function deleteBookmark(bookmarkId) {
  */
 function refreshBookmarkListInModal() {
     if (!currentModal || currentModal.length === 0) {
+        console.log('[Bookmark] 모달이 열려있지 않아 리스트 새로고침을 건너뜀');
         return; // 모달이 열려있지 않으면 아무것도 하지 않음
     }
     
-    console.log('[Bookmark] 모달 내 책갈피 리스트 새로고침');
+    console.log(`[Bookmark] 모달 내 책갈피 리스트 새로고침 - 현재 북마크 수: ${bookmarks.length}`);
     
     // 새로운 북마크 리스트 HTML 생성
     const bookmarkList = bookmarks.map(bookmark => `
@@ -1607,7 +1613,12 @@ function importBookmarkData() {
                         
                         if (result.importedCount > 0) {
                             toastr.success(`${result.importedCount}개의 책갈피를 불러왔습니다.${result.duplicatedCount > 0 ? ` (중복 ${result.duplicatedCount}개 제외)` : ''}`);
-                            refreshBookmarkListInModal();
+                            // v1.0은 현재 채팅에 직접 추가하므로 아이콘과 모달만 새로고침
+                            refreshBookmarkIcons();
+                            // DOM 업데이트 완료 후 모달 새로고침
+                            setTimeout(() => {
+                                refreshBookmarkListInModal();
+                            }, 100);
                         } else {
                             toastr.info('새로운 책갈피가 없습니다. (모두 중복)');
                         }
@@ -1630,7 +1641,10 @@ function importBookmarkData() {
                         // 현재 채팅 북마크 새로고침
                         loadBookmarks();
                         refreshBookmarkIcons();
-                        refreshBookmarkListInModal();
+                        // 메타데이터 로드 완료 후 모달 업데이트 (비동기 처리 고려)
+                        setTimeout(() => {
+                            refreshBookmarkListInModal();
+                        }, 100);
                         
                         return;
                     }
@@ -1653,7 +1667,10 @@ function importBookmarkData() {
                         // 현재 채팅 북마크 새로고침
                         loadBookmarks();
                         refreshBookmarkIcons();
-                        refreshBookmarkListInModal();
+                        // 메타데이터 로드 완료 후 모달 업데이트 (비동기 처리 고려)
+                        setTimeout(() => {
+                            refreshBookmarkListInModal();
+                        }, 100);
                         
                         return;
                     }
