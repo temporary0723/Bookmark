@@ -1157,20 +1157,38 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                     // 채팅 메타데이터 업데이트
                     chatMetadata[BOOKMARK_METADATA_KEY] = mergedBookmarks.sort((a, b) => a.messageId - b.messageId);
                     
+                    // 전체 채팅 데이터 구성 (SillyTavern API 요구사항)
+                    let chatContentToSave = [];
+                    
+                    // 메타데이터 객체 생성 (첫 번째 요소)
+                    const metadataForSave = {
+                        ...chatDataResponse[0], // 기존 메타데이터 속성 유지
+                        chat_metadata: chatMetadata // 업데이트된 메타데이터로 교체
+                    };
+                    
+                    chatContentToSave.push(metadataForSave);
+                    
+                    // 기존 메시지들 추가 (메타데이터 이후의 모든 요소들)
+                    if (Array.isArray(chatDataResponse) && chatDataResponse.length > 1) {
+                        chatContentToSave.push(...chatDataResponse.slice(1));
+                    }
+                    
                     // 서버에 저장
                     const saveRequestBody = {
                         ch_name: targetCharacter.name,
                         file_name: chatData.fileName.replace('.jsonl', ''),
                         avatar_url: targetCharacter.avatar,
-                        chat_metadata: chatMetadata
+                        chat: chatContentToSave,
+                        force: true
                     };
                     
-                    console.log(`[Bookmark] 메타데이터 저장 요청:`, {
+                    console.log(`[Bookmark] 전체 채팅 데이터 저장 요청:`, {
                         ch_name: saveRequestBody.ch_name,
                         file_name: saveRequestBody.file_name,
                         avatar_url: saveRequestBody.avatar_url,
-                        metadata_keys: Object.keys(saveRequestBody.chat_metadata),
-                        bookmark_count: saveRequestBody.chat_metadata[BOOKMARK_METADATA_KEY]?.length || 0
+                        chat_length: saveRequestBody.chat.length,
+                        metadata_keys: Object.keys(saveRequestBody.chat[0].chat_metadata || {}),
+                        bookmark_count: saveRequestBody.chat[0].chat_metadata?.[BOOKMARK_METADATA_KEY]?.length || 0
                     });
                     
                     const saveResponse = await fetch('/api/chats/save', {
@@ -1180,12 +1198,12 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                     });
                     
                     if (!saveResponse.ok) {
-                        console.error(`[Bookmark] 메타데이터 저장 실패: ${saveResponse.status} - ${saveResponse.statusText}`);
+                        console.error(`[Bookmark] 채팅 데이터 저장 실패: ${saveResponse.status} - ${saveResponse.statusText}`);
                         const errorText = await saveResponse.text();
                         console.error(`[Bookmark] 저장 오류 응답:`, errorText);
                     } else {
                         const saveResult = await saveResponse.text();
-                        console.log(`[Bookmark] 메타데이터 저장 응답:`, saveResult);
+                        console.log(`[Bookmark] 채팅 데이터 저장 응답:`, saveResult);
                         
                         // 저장 후 검증을 위해 다시 불러와서 확인
                         console.log(`[Bookmark] 저장 검증을 위해 채팅 데이터 다시 확인...`);
@@ -1207,6 +1225,8 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                                 console.log(`[Bookmark] 저장 검증 결과: ${verifyBookmarks.length}개 북마크 확인됨`);
                                 if (verifyBookmarks.length !== mergedBookmarks.length) {
                                     console.error(`[Bookmark] 저장 검증 실패! 예상: ${mergedBookmarks.length}개, 실제: ${verifyBookmarks.length}개`);
+                                } else {
+                                    console.log(`[Bookmark] 저장 검증 성공! ✅`);
                                 }
                             }
                         }
@@ -1334,12 +1354,29 @@ async function importV2ToOriginalChats(chatBookmarks) {
             // 채팅 메타데이터 업데이트
             chatMetadata[BOOKMARK_METADATA_KEY] = mergedBookmarks.sort((a, b) => a.messageId - b.messageId);
             
+            // 전체 채팅 데이터 구성 (SillyTavern API 요구사항)
+            let chatContentToSave = [];
+            
+            // 메타데이터 객체 생성 (첫 번째 요소)
+            const metadataForSave = {
+                ...chatDataResponse[0], // 기존 메타데이터 속성 유지
+                chat_metadata: chatMetadata // 업데이트된 메타데이터로 교체
+            };
+            
+            chatContentToSave.push(metadataForSave);
+            
+            // 기존 메시지들 추가 (메타데이터 이후의 모든 요소들)
+            if (Array.isArray(chatDataResponse) && chatDataResponse.length > 1) {
+                chatContentToSave.push(...chatDataResponse.slice(1));
+            }
+            
             // 서버에 저장
             const saveRequestBody = {
                 ch_name: currentCharacter.name,
                 file_name: chatData.fileName.replace('.jsonl', ''),
                 avatar_url: currentCharacter.avatar,
-                chat_metadata: chatMetadata
+                chat: chatContentToSave,
+                force: true
             };
             
             await fetch('/api/chats/save', {
