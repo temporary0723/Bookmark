@@ -107,17 +107,30 @@ function loadBookmarks() {
         const context = getContext();
         if (!context || !context.chatMetadata) {
             console.log('[Bookmark] 컨텍스트 또는 메타데이터를 찾을 수 없음. 빈 배열로 초기화.');
+            console.log(`[Bookmark] context 존재: ${!!context}, chatMetadata 존재: ${!!(context && context.chatMetadata)}`);
             bookmarks = [];
             return;
         }
+
+        console.log(`[Bookmark] 현재 채팅 정보 - characterId: ${context.characterId}, chatId: ${context.chatId}`);
+        console.log(`[Bookmark] 메타데이터 키들: ${Object.keys(context.chatMetadata).join(', ')}`);
 
         // 기존 북마크 마이그레이션 시도 (한 번만 실행됨)
         migrateOldBookmarks();
 
         const savedBookmarks = context.chatMetadata[BOOKMARK_METADATA_KEY];
+        console.log(`[Bookmark] ${BOOKMARK_METADATA_KEY} 키에서 찾은 데이터:`, savedBookmarks ? `배열 (${savedBookmarks.length}개)` : savedBookmarks);
+        
         if (savedBookmarks && Array.isArray(savedBookmarks)) {
             bookmarks = savedBookmarks;
             console.log(`[Bookmark] 현재 채팅에서 ${bookmarks.length}개의 북마크를 로드했습니다.`);
+            if (bookmarks.length > 0) {
+                console.log(`[Bookmark] 첫 번째 북마크 예시:`, {
+                    id: bookmarks[0].id,
+                    messageId: bookmarks[0].messageId,
+                    name: bookmarks[0].name
+                });
+            }
         } else {
             bookmarks = [];
             console.log('[Bookmark] 현재 채팅에 저장된 북마크가 없습니다. 빈 배열로 초기화.');
@@ -1006,75 +1019,7 @@ function importLegacyBookmarks(legacyBookmarks) {
     return { importedCount, duplicatedCount };
 }
 
-/**
- * v2.0 형식 북마크를 현재 채팅에만 불러오기
- */
-function importV2ToCurrentChat(chatBookmarks) {
-    let totalImported = 0;
-    let totalDuplicated = 0;
-    
-    chatBookmarks.forEach(chatData => {
-        chatData.bookmarks.forEach(importBookmark => {
-            const exists = bookmarks.some(existing => 
-                existing.messageId === importBookmark.messageId && 
-                existing.name === importBookmark.name
-            );
-            
-            if (!exists) {
-                const newBookmark = {
-                    ...importBookmark,
-                    id: uuidv4()
-                };
-                bookmarks.push(newBookmark);
-                totalImported++;
-            } else {
-                totalDuplicated++;
-            }
-        });
-    });
-    
-    bookmarks.sort((a, b) => a.messageId - b.messageId);
-    saveBookmarks();
-    refreshBookmarkIcons();
-    
-    return { importedCount: totalImported, duplicatedCount: totalDuplicated };
-}
 
-/**
- * v3.0 형식 북마크를 현재 캐릭터에만 불러오기
- */
-function importV3ToCurrentCharacter(characterBookmarks) {
-    let totalImported = 0;
-    let totalDuplicated = 0;
-    
-    characterBookmarks.forEach(charData => {
-        charData.chats.forEach(chatData => {
-            chatData.bookmarks.forEach(importBookmark => {
-                const exists = bookmarks.some(existing => 
-                    existing.messageId === importBookmark.messageId && 
-                    existing.name === importBookmark.name
-                );
-                
-                if (!exists) {
-                    const newBookmark = {
-                        ...importBookmark,
-                        id: uuidv4()
-                    };
-                    bookmarks.push(newBookmark);
-                    totalImported++;
-                } else {
-                    totalDuplicated++;
-                }
-            });
-        });
-    });
-    
-    bookmarks.sort((a, b) => a.messageId - b.messageId);
-    saveBookmarks();
-    refreshBookmarkIcons();
-    
-    return { importedCount: totalImported, duplicatedCount: totalDuplicated };
-}
 
 /**
  * v3.0 형식 북마크를 각 캐릭터별/채팅별로 원래 위치에 불러오기
@@ -1085,6 +1030,9 @@ async function importV3ToOriginalLocations(characterBookmarks) {
         throw new Error('캐릭터 목록을 찾을 수 없습니다.');
     }
     
+    console.log(`[Bookmark] v3.0 불러오기 시작 - 복원할 캐릭터 수: ${characterBookmarks.length}`);
+    console.log(`[Bookmark] 현재 SillyTavern에 로드된 캐릭터 수: ${context.characters.length}`);
+    
     let processedCharacters = 0;
     let processedChats = 0;
     let totalImported = 0;
@@ -1092,6 +1040,8 @@ async function importV3ToOriginalLocations(characterBookmarks) {
     
     for (const charData of characterBookmarks) {
         try {
+            console.log(`[Bookmark] 캐릭터 "${charData.characterName}" 처리 시작 - 채팅 수: ${charData.chats.length}`);
+            
             // 캐릭터 찾기 (이름으로 매칭)
             const targetCharacter = context.characters.find(char => 
                 char && char.name === charData.characterName
@@ -1099,17 +1049,21 @@ async function importV3ToOriginalLocations(characterBookmarks) {
             
             if (!targetCharacter) {
                 console.warn(`[Bookmark] 캐릭터 "${charData.characterName}"을 찾을 수 없습니다.`);
+                console.log(`[Bookmark] 현재 로드된 캐릭터 이름들: ${context.characters.map(c => c?.name || 'unnamed').join(', ')}`);
                 notFoundCharacters.push(charData.characterName);
                 continue;
             }
             
-            console.log(`[Bookmark] 캐릭터 "${charData.characterName}"에 북마크 복원 중...`);
+            console.log(`[Bookmark] 캐릭터 "${charData.characterName}" 발견 - avatar: ${targetCharacter.avatar}`);
             
             for (const chatData of charData.chats) {
                 try {
+                    console.log(`[Bookmark] 채팅 "${chatData.chatName}" (${chatData.fileName}) 처리 시작 - 북마크 수: ${chatData.bookmarks.length}`);
+                    
                     // 현재 캐릭터의 현재 채팅인 경우
                     const targetCharIndex = context.characters.indexOf(targetCharacter);
                     if (targetCharIndex === context.characterId && chatData.fileName === context.chatId) {
+                        console.log(`[Bookmark] 현재 채팅으로 감지됨 - 메모리에 직접 추가`);
                         chatData.bookmarks.forEach(importBookmark => {
                             const exists = bookmarks.some(existing => 
                                 existing.messageId === importBookmark.messageId && 
@@ -1128,6 +1082,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         bookmarks.sort((a, b) => a.messageId - b.messageId);
                         saveBookmarks();
                         processedChats++;
+                        console.log(`[Bookmark] 현재 채팅에 ${chatData.bookmarks.length}개 북마크 추가 완료`);
                         continue;
                     }
                     
@@ -1138,6 +1093,8 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         avatar_url: targetCharacter.avatar
                     };
                     
+                    console.log(`[Bookmark] 채팅 데이터 요청:`, chatRequestBody);
+                    
                     const chatResponse = await fetch('/api/chats/get', {
                         method: 'POST',
                         headers: getRequestHeaders(),
@@ -1145,11 +1102,13 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                     });
                     
                     if (!chatResponse.ok) {
-                        console.warn(`[Bookmark] 캐릭터 "${charData.characterName}" 채팅 ${chatData.fileName} 데이터 가져오기 실패`);
+                        console.warn(`[Bookmark] 캐릭터 "${charData.characterName}" 채팅 ${chatData.fileName} 데이터 가져오기 실패: ${chatResponse.status} - ${chatResponse.statusText}`);
                         continue;
                     }
                     
                     const chatDataResponse = await chatResponse.json();
+                    console.log(`[Bookmark] 채팅 데이터 응답 타입: ${Array.isArray(chatDataResponse) ? 'Array' : typeof chatDataResponse}, 길이/키: ${Array.isArray(chatDataResponse) ? chatDataResponse.length : Object.keys(chatDataResponse).length}`);
+                    
                     let chatMetadata = null;
                     
                     // 메타데이터 추출
@@ -1157,16 +1116,25 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         const firstItem = chatDataResponse[0];
                         if (typeof firstItem === 'object' && firstItem !== null && !Array.isArray(firstItem)) {
                             chatMetadata = firstItem.chat_metadata || firstItem;
+                            console.log(`[Bookmark] 메타데이터 추출 성공 - 키들: ${Object.keys(chatMetadata).join(', ')}`);
+                        } else {
+                            console.log(`[Bookmark] 첫 번째 아이템이 메타데이터가 아님: ${typeof firstItem}`);
                         }
+                    } else {
+                        console.log(`[Bookmark] 채팅 응답이 비어있거나 배열이 아님`);
                     }
                     
                     if (!chatMetadata) {
+                        console.log(`[Bookmark] 메타데이터 초기화`);
                         chatMetadata = {};
                     }
                     
                     // 기존 북마크와 병합
                     const existingBookmarks = chatMetadata[BOOKMARK_METADATA_KEY] || [];
+                    console.log(`[Bookmark] 기존 북마크 수: ${existingBookmarks.length}, 추가할 북마크 수: ${chatData.bookmarks.length}`);
+                    
                     const mergedBookmarks = [...existingBookmarks];
+                    let importedForThisChat = 0;
                     
                     chatData.bookmarks.forEach(importBookmark => {
                         const exists = mergedBookmarks.some(existing => 
@@ -1180,8 +1148,11 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                                 id: uuidv4()
                             });
                             totalImported++;
+                            importedForThisChat++;
                         }
                     });
+                    
+                    console.log(`[Bookmark] 이 채팅에 ${importedForThisChat}개 북마크 추가됨 (총 ${mergedBookmarks.length}개)`);
                     
                     // 채팅 메타데이터 업데이트
                     chatMetadata[BOOKMARK_METADATA_KEY] = mergedBookmarks.sort((a, b) => a.messageId - b.messageId);
@@ -1194,11 +1165,27 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         chat_metadata: chatMetadata
                     };
                     
-                    await fetch('/api/chats/save', {
+                    console.log(`[Bookmark] 메타데이터 저장 요청:`, {
+                        ch_name: saveRequestBody.ch_name,
+                        file_name: saveRequestBody.file_name,
+                        avatar_url: saveRequestBody.avatar_url,
+                        metadata_keys: Object.keys(saveRequestBody.chat_metadata),
+                        bookmark_count: saveRequestBody.chat_metadata[BOOKMARK_METADATA_KEY]?.length || 0
+                    });
+                    
+                    const saveResponse = await fetch('/api/chats/save', {
                         method: 'POST',
                         headers: getRequestHeaders(),
                         body: JSON.stringify(saveRequestBody)
                     });
+                    
+                    if (!saveResponse.ok) {
+                        console.error(`[Bookmark] 메타데이터 저장 실패: ${saveResponse.status} - ${saveResponse.statusText}`);
+                        const errorText = await saveResponse.text();
+                        console.error(`[Bookmark] 저장 오류 응답:`, errorText);
+                    } else {
+                        console.log(`[Bookmark] 메타데이터 저장 성공`);
+                    }
                     
                     processedChats++;
                     
@@ -1208,11 +1195,18 @@ async function importV3ToOriginalLocations(characterBookmarks) {
             }
             
             processedCharacters++;
+            console.log(`[Bookmark] 캐릭터 "${charData.characterName}" 처리 완료 - 처리된 채팅: ${charData.chats.length}개`);
             
         } catch (error) {
             console.error(`[Bookmark] 캐릭터 "${charData.characterName}" 처리 중 오류:`, error);
         }
     }
+    
+    console.log(`[Bookmark] v3.0 불러오기 완료 요약:`);
+    console.log(`  - 처리된 캐릭터: ${processedCharacters}개`);
+    console.log(`  - 처리된 채팅: ${processedChats}개`);
+    console.log(`  - 총 추가된 북마크: ${totalImported}개`);
+    console.log(`  - 찾을 수 없는 캐릭터: ${notFoundCharacters.length}개 (${notFoundCharacters.join(', ')})`);
     
     return { 
         processedCharacters, 
@@ -1379,33 +1373,15 @@ function importBookmarkData() {
                         
                         const totalBookmarks = importData.chatBookmarks.reduce((sum, chat) => sum + chat.bookmarks.length, 0);
                         
-                        // 사용자에게 불러오기 방식 선택 옵션 제공
-                        const choice = await callGenericPopup(
-                            `총 ${importData.totalChats}개 채팅의 ${totalBookmarks}개 책갈피를 발견했습니다.\n\n어떻게 불러오시겠습니까?`,
-                            POPUP_TYPE.CONFIRM,
-                            '',
-                            { 
-                                okButton: '현재 채팅에만 모두 불러오기',
-                                cancelButton: '각 채팅별로 원래 위치에 불러오기'
-                            }
-                        );
+                        // 각 채팅별로 원래 위치에 불러오기
+                        toastr.info(`총 ${importData.totalChats}개 채팅의 ${totalBookmarks}개 책갈피를 복원하고 있습니다... 시간이 걸릴 수 있습니다.`);
+                        const result = await importV2ToOriginalChats(importData.chatBookmarks);
+                        toastr.success(`${result.processedChats}개 채팅에 총 ${result.totalImported}개의 책갈피를 복원했습니다.`);
                         
-                        if (choice === POPUP_RESULT.AFFIRMATIVE) {
-                            // 현재 채팅에만 모든 책갈피 불러오기
-                            const result = importV2ToCurrentChat(importData.chatBookmarks);
-                            toastr.success(`모든 책갈피를 현재 채팅에 불러왔습니다. (${result.importedCount}개 추가${result.duplicatedCount > 0 ? `, 중복 ${result.duplicatedCount}개 제외` : ''})`);
-                            setTimeout(() => createBookmarkListModal(), 100);
-                        } else {
-                            // 각 채팅별로 원래 위치에 불러오기
-                            toastr.info('각 채팅에 책갈피를 복원하고 있습니다... 시간이 걸릴 수 있습니다.');
-                            const result = await importV2ToOriginalChats(importData.chatBookmarks);
-                            toastr.success(`${result.processedChats}개 채팅에 총 ${result.totalImported}개의 책갈피를 복원했습니다.`);
-                            
-                            // 현재 채팅 북마크 새로고침
-                            loadBookmarks();
-                            refreshBookmarkIcons();
-                            setTimeout(() => createBookmarkListModal(), 100);
-                        }
+                        // 현재 채팅 북마크 새로고침
+                        loadBookmarks();
+                        refreshBookmarkIcons();
+                        setTimeout(() => createBookmarkListModal(), 100);
                         
                         return;
                     }
@@ -1414,39 +1390,21 @@ function importBookmarkData() {
                     if (importData.version === '3.0' && importData.characterBookmarks && Array.isArray(importData.characterBookmarks)) {
                         console.log('[Bookmark] v3.0 형식 파일을 감지했습니다.');
                         
-                        // 사용자에게 불러오기 방식 선택 옵션 제공
-                        const choice = await callGenericPopup(
-                            `총 ${importData.totalCharacters}개 캐릭터, ${importData.totalChats}개 채팅의 ${importData.totalBookmarks}개 책갈피를 발견했습니다.\n\n어떻게 불러오시겠습니까?`,
-                            POPUP_TYPE.CONFIRM,
-                            '',
-                            { 
-                                okButton: '현재 채팅에만 모두 불러오기',
-                                cancelButton: '각 캐릭터/채팅별로 원래 위치에 불러오기'
-                            }
-                        );
+                        // 각 캐릭터/채팅별로 원래 위치에 불러오기
+                        toastr.info(`총 ${importData.totalCharacters}개 캐릭터, ${importData.totalChats}개 채팅의 ${importData.totalBookmarks}개 책갈피를 복원하고 있습니다... 시간이 오래 걸릴 수 있습니다.`);
+                        const result = await importV3ToOriginalLocations(importData.characterBookmarks);
                         
-                        if (choice === POPUP_RESULT.AFFIRMATIVE) {
-                            // 현재 채팅에만 모든 책갈피 불러오기
-                            const result = importV3ToCurrentCharacter(importData.characterBookmarks);
-                            toastr.success(`모든 책갈피를 현재 채팅에 불러왔습니다. (${result.importedCount}개 추가${result.duplicatedCount > 0 ? `, 중복 ${result.duplicatedCount}개 제외` : ''})`);
-                            setTimeout(() => createBookmarkListModal(), 100);
-                        } else {
-                            // 각 캐릭터/채팅별로 원래 위치에 불러오기
-                            toastr.info('각 캐릭터와 채팅에 책갈피를 복원하고 있습니다... 시간이 오래 걸릴 수 있습니다.');
-                            const result = await importV3ToOriginalLocations(importData.characterBookmarks);
-                            
-                            let successMsg = `${result.processedCharacters}개 캐릭터, ${result.processedChats}개 채팅에 총 ${result.totalImported}개의 책갈피를 복원했습니다.`;
-                            if (result.notFoundCharacters.length > 0) {
-                                successMsg += `\n\n찾을 수 없는 캐릭터: ${result.notFoundCharacters.join(', ')}`;
-                            }
-                            
-                            toastr.success(successMsg);
-                            
-                            // 현재 채팅 북마크 새로고침
-                            loadBookmarks();
-                            refreshBookmarkIcons();
-                            setTimeout(() => createBookmarkListModal(), 100);
+                        let successMsg = `${result.processedCharacters}개 캐릭터, ${result.processedChats}개 채팅에 총 ${result.totalImported}개의 책갈피를 복원했습니다.`;
+                        if (result.notFoundCharacters.length > 0) {
+                            successMsg += `\n\n찾을 수 없는 캐릭터: ${result.notFoundCharacters.join(', ')}`;
                         }
+                        
+                        toastr.success(successMsg);
+                        
+                        // 현재 채팅 북마크 새로고침
+                        loadBookmarks();
+                        refreshBookmarkIcons();
+                        setTimeout(() => createBookmarkListModal(), 100);
                         
                         return;
                     }
