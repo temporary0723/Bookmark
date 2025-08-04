@@ -169,7 +169,7 @@ async function createBookmarkModal(messageId) {
     console.log(`[Bookmark] createBookmarkModal 함수 시작 - messageId: ${messageId}`);
     
     const result = await callGenericPopup(
-        `메시지 ID: ${messageId}`,
+        '책갈피 제목을 입력하세요',
         POPUP_TYPE.INPUT,
         ''
     );
