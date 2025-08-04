@@ -219,14 +219,14 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    border: 1px solid var(--SmartThemeBorderColor);
+    border: 1px solid var(--SmartThemeQuoteColor);
     border-radius: 6px;
-    background-color: var(--SmartThemeBlurTintColor);
-    color: var(--SmartThemeBodyColor);
+    background-color: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBlurTintColor);
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     flex: 1;
     min-width: 150px;
     justify-content: center;
@@ -234,8 +234,9 @@
 
 .bookmark-import-btn:hover,
 .bookmark-export-btn:hover {
-    background-color: var(--SmartThemeQuoteColor);
-    color: var(--SmartThemeBlurTintColor);
+    background-color: var(--SmartThemeBodyColor);
+    color: var(--SmartThemeQuoteColor);
+    border-color: var(--SmartThemeBodyColor);
     transform: scale(1.02);
     filter: brightness(1.1);
 }
