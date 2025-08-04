@@ -186,18 +186,15 @@ async function createBookmarkListModal() {
     const bookmarkList = bookmarks.map(bookmark => `
         <div class="bookmark-item" data-bookmark-id="${bookmark.id}">
             <div class="bookmark-content" data-message-id="${bookmark.messageId}">
-                <div class="bookmark-header">
-                    <span class="bookmark-name">${bookmark.name}</span>
-                    <span class="bookmark-message-id">ID: ${bookmark.messageId}</span>
-                </div>
-                <div class="bookmark-description">${bookmark.description || '설명 없음'}</div>
-                <div class="bookmark-date">${new Date(bookmark.createdAt).toLocaleString()}</div>
+                <div class="bookmark-id">#${bookmark.messageId}</div>
+                <div class="bookmark-name">${bookmark.name}</div>
+                <input type="text" class="bookmark-description-field text_pole" value="${bookmark.description || ''}" placeholder="북마크 설명을 입력하세요" data-bookmark-id="${bookmark.id}">
             </div>
             <div class="bookmark-actions">
-                <button class="bookmark-edit-btn menu_button" title="수정">
+                <button class="bookmark-edit-btn" title="수정">
                     <i class="fa-solid fa-pencil"></i>
                 </button>
-                <button class="bookmark-delete-btn menu_button" title="삭제">
+                <button class="bookmark-delete-btn" title="삭제">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
@@ -236,7 +233,15 @@ async function createBookmarkListModal() {
     }, 10);
 
     // 이벤트 핸들러
-    currentModal.find('.bookmark-modal-close').on('click', closeBookmarkModal);
+    currentModal.find('.bookmark-modal-close').on('click', function() {
+        currentModal.removeClass('visible');
+        currentModal.find('.bookmark-list-modal').removeClass('visible');
+        
+        setTimeout(() => {
+            currentModal.remove();
+            currentModal = null;
+        }, 300);
+    });
     
     // 북마크 클릭으로 메시지 이동
     currentModal.find('.bookmark-content').on('click', function() {
@@ -247,11 +252,24 @@ async function createBookmarkListModal() {
         }, 100);
     });
 
-    // 수정 버튼
+    // 설명 필드 변경 이벤트
+    currentModal.find('.bookmark-description-field').on('blur', function() {
+        const bookmarkId = $(this).data('bookmark-id');
+        const newDescription = $(this).val().trim();
+        const bookmark = bookmarks.find(b => b.id === bookmarkId);
+        
+        if (bookmark && bookmark.description !== newDescription) {
+            bookmark.description = newDescription;
+            saveBookmarks();
+            console.log(`[Bookmark] 설명 자동 저장 - ID: ${bookmarkId}`);
+        }
+    });
+
+    // 수정 버튼 (이름만 수정)
     currentModal.find('.bookmark-edit-btn').on('click', function(e) {
         e.stopPropagation();
         const bookmarkId = $(this).closest('.bookmark-item').data('bookmark-id');
-        editBookmarkModal(bookmarkId);
+        editBookmarkNameOnly(bookmarkId);
     });
 
     // 삭제 버튼
@@ -308,6 +326,40 @@ async function editBookmarkModal(bookmarkId) {
         editBookmark(bookmarkId, newName, descResult);
         toastr.success('북마크가 수정되었습니다.');
     }
+
+    // 목록 새로고침
+    setTimeout(() => createBookmarkListModal(), 100);
+}
+
+/**
+ * 북마크 이름만 수정
+ */
+async function editBookmarkNameOnly(bookmarkId) {
+    const bookmark = bookmarks.find(b => b.id === bookmarkId);
+    if (!bookmark) return;
+
+    console.log(`[Bookmark] 북마크 이름 수정 - ID: ${bookmarkId}`);
+
+    const nameResult = await callGenericPopup(
+        `북마크 이름 수정 (메시지 ID: ${bookmark.messageId})`,
+        POPUP_TYPE.INPUT,
+        bookmark.name
+    );
+
+    if (nameResult === false || nameResult === null) {
+        console.log('[Bookmark] 북마크 이름 수정 취소됨');
+        return;
+    }
+
+    const newName = nameResult.trim();
+    if (!newName) {
+        toastr.error('북마크 이름을 입력해주세요.');
+        return;
+    }
+
+    // 이름만 수정 (설명은 그대로 유지)
+    editBookmark(bookmarkId, newName, bookmark.description);
+    toastr.success('북마크 이름이 수정되었습니다.');
 
     // 목록 새로고침
     setTimeout(() => createBookmarkListModal(), 100);
