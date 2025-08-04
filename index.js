@@ -1276,14 +1276,28 @@ async function importV2ToOriginalChats(chatBookmarks) {
     
     for (const chatData of chatBookmarks) {
         try {
-            console.log(`[Bookmark] v2.0 채팅 "${chatData.fileName}" 처리 시작`);
-            console.log(`[Bookmark] v2.0 현재 채팅 ID: "${context.chatId}"`);
-            
-            // 파일명에서 .jsonl 확장자 제거하여 비교
-            const chatFileNameClean = chatData.fileName.replace('.jsonl', '');
-            console.log(`[Bookmark] v2.0 현재 채팅 판별: isCurrent=${chatData.isCurrent}, fileName(${chatFileNameClean})===chatId=${chatFileNameClean === context.chatId}`);
-            
-            // 모든 채팅을 동일한 방식으로 처리 (현재 채팅 포함)
+            if (chatData.isCurrent || chatData.fileName === context.chatId) {
+                // 현재 채팅인 경우 메모리에 직접 추가
+                chatData.bookmarks.forEach(importBookmark => {
+                    const exists = bookmarks.some(existing => 
+                        existing.messageId === importBookmark.messageId && 
+                        existing.name === importBookmark.name
+                    );
+                    
+                    if (!exists) {
+                        bookmarks.push({
+                            ...importBookmark,
+                            id: uuidv4()
+                        });
+                        totalImported++;
+                    }
+                });
+                
+                bookmarks.sort((a, b) => a.messageId - b.messageId);
+                saveBookmarks();
+                processedChats++;
+                continue;
+            }
             
             // 다른 채팅의 메타데이터 가져오기
             const chatRequestBody = {
@@ -1365,64 +1379,11 @@ async function importV2ToOriginalChats(chatBookmarks) {
                 force: true
             };
             
-            console.log(`[Bookmark] v2.0 채팅 데이터 저장 요청:`, {
-                ch_name: saveRequestBody.ch_name,
-                file_name: saveRequestBody.file_name,
-                avatar_url: saveRequestBody.avatar_url,
-                chat_length: saveRequestBody.chat.length,
-                metadata_keys: Object.keys(saveRequestBody.chat[0].chat_metadata || {}),
-                bookmark_count: saveRequestBody.chat[0].chat_metadata?.[BOOKMARK_METADATA_KEY]?.length || 0
-            });
-            
-            const saveResponse = await fetch('/api/chats/save', {
+            await fetch('/api/chats/save', {
                 method: 'POST',
                 headers: getRequestHeaders(),
                 body: JSON.stringify(saveRequestBody)
             });
-            
-            if (!saveResponse.ok) {
-                console.error(`[Bookmark] v2.0 채팅 데이터 저장 실패: ${saveResponse.status} - ${saveResponse.statusText}`);
-                const errorText = await saveResponse.text();
-                console.error(`[Bookmark] v2.0 저장 오류 응답:`, errorText);
-            } else {
-                const saveResult = await saveResponse.text();
-                console.log(`[Bookmark] v2.0 채팅 데이터 저장 응답:`, saveResult);
-                
-                // 저장 후 검증을 위해 다시 불러와서 확인
-                console.log(`[Bookmark] v2.0 저장 검증을 위해 채팅 데이터 다시 확인...`);
-                const verifyResponse = await fetch('/api/chats/get', {
-                    method: 'POST',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify({
-                        ch_name: currentCharacter.name,
-                        file_name: chatData.fileName.replace('.jsonl', ''),
-                        avatar_url: currentCharacter.avatar
-                    })
-                });
-                
-                if (verifyResponse.ok) {
-                    const verifyData = await verifyResponse.json();
-                    if (Array.isArray(verifyData) && verifyData.length > 0) {
-                        const verifyMetadata = verifyData[0].chat_metadata || verifyData[0];
-                        const verifyBookmarks = verifyMetadata[BOOKMARK_METADATA_KEY] || [];
-                        console.log(`[Bookmark] v2.0 저장 검증 결과: ${verifyBookmarks.length}개 북마크 확인됨`);
-                        if (verifyBookmarks.length !== mergedBookmarks.length) {
-                            console.error(`[Bookmark] v2.0 저장 검증 실패! 예상: ${mergedBookmarks.length}개, 실제: ${verifyBookmarks.length}개`);
-                        } else {
-                            console.log(`[Bookmark] v2.0 저장 검증 성공! ✅`);
-                        }
-                    }
-                }
-            }
-            
-            // 현재 채팅인 경우 메모리에서도 북마크를 다시 로드
-            const isCurrentChat = chatData.isCurrent || chatFileNameClean === context.chatId;
-            console.log(`[Bookmark] v2.0 현재 채팅 확인: ${isCurrentChat} (isCurrent: ${chatData.isCurrent}, fileName: "${chatFileNameClean}", chatId: "${context.chatId}")`);
-            
-            if (isCurrentChat) {
-                console.log(`[Bookmark] v2.0 현재 채팅이므로 메모리 북마크를 다시 로드합니다.`);
-                loadBookmarks();
-            }
             
             processedChats++;
             
