@@ -95,6 +95,8 @@ function scrollToMessage(messageId) {
  * 북마크 추가 모달 생성
  */
 async function createBookmarkModal(messageId) {
+    console.log(`[Bookmark] createBookmarkModal 함수 시작 - messageId: ${messageId}`);
+    
     const modalHtml = `
         <div class="bookmark-modal-backdrop">
             <div class="bookmark-modal">
@@ -125,35 +127,50 @@ async function createBookmarkModal(messageId) {
 
     // 기존 모달 제거
     if (currentModal) {
+        console.log('[Bookmark] 기존 모달 제거');
         currentModal.remove();
     }
 
+    console.log('[Bookmark] 새 모달 HTML 생성 완료');
     currentModal = $(modalHtml);
+    console.log('[Bookmark] 모달 DOM 요소 생성:', currentModal[0]);
+    
     $('body').append(currentModal);
+    console.log('[Bookmark] 모달을 body에 추가 완료');
 
     // 애니메이션 효과
     setTimeout(() => {
+        console.log('[Bookmark] 모달 애니메이션 시작');
         currentModal.addClass('visible');
         currentModal.find('.bookmark-modal').addClass('visible');
+        console.log('[Bookmark] 모달 표시 완료');
     }, 10);
 
     // 이벤트 핸들러
+    console.log('[Bookmark] 모달 이벤트 핸들러 등록 시작');
     currentModal.find('.bookmark-modal-close, .bookmark-cancel-btn').on('click', closeBookmarkModal);
     
     currentModal.find('.bookmark-confirm-btn').on('click', function() {
+        console.log('[Bookmark] 확인 버튼 클릭됨');
         const name = $('#bookmark-name').val().trim();
         const description = $('#bookmark-description').val().trim();
         
+        console.log(`[Bookmark] 입력값 - 이름: "${name}", 설명: "${description}"`);
+        
         if (!name) {
+            console.log('[Bookmark] 북마크 이름이 비어있음');
             toastr.error('북마크 이름을 입력해주세요.');
             return;
         }
 
         // 북마크 추가
+        console.log(`[Bookmark] 북마크 추가 시작 - messageId: ${messageId}`);
         addBookmark(messageId, name, description);
         closeBookmarkModal();
         toastr.success('북마크가 추가되었습니다.');
     });
+    
+    console.log('[Bookmark] 모달 이벤트 핸들러 등록 완료');
 
     // 엔터키로 확인
     currentModal.find('input, textarea').on('keydown', function(e) {
@@ -173,14 +190,19 @@ async function createBookmarkModal(messageId) {
  * 북마크 모달 닫기
  */
 function closeBookmarkModal() {
+    console.log('[Bookmark] 모달 닫기 시작');
     if (currentModal) {
+        console.log('[Bookmark] 모달 애니메이션 제거 시작');
         currentModal.removeClass('visible');
         currentModal.find('.bookmark-modal').removeClass('visible');
         
         setTimeout(() => {
+            console.log('[Bookmark] 모달 DOM에서 제거');
             currentModal.remove();
             currentModal = null;
         }, 300);
+    } else {
+        console.log('[Bookmark] 닫을 모달이 없음');
     }
 }
 
@@ -188,6 +210,8 @@ function closeBookmarkModal() {
  * 북마크 추가
  */
 function addBookmark(messageId, name, description) {
+    console.log(`[Bookmark] addBookmark 함수 시작 - messageId: ${messageId}, name: "${name}"`);
+    
     const bookmark = {
         id: uuidv4(),
         messageId: parseInt(messageId),
@@ -196,9 +220,15 @@ function addBookmark(messageId, name, description) {
         createdAt: new Date().toISOString()
     };
 
+    console.log('[Bookmark] 북마크 객체 생성:', bookmark);
+    
     bookmarks.push(bookmark);
     bookmarks.sort((a, b) => a.messageId - b.messageId);
+    
+    console.log(`[Bookmark] 북마크 배열에 추가 완료. 총 ${bookmarks.length}개`);
+    
     saveBookmarks();
+    console.log('[Bookmark] 북마크 저장 완료');
 }
 
 /**
@@ -452,8 +482,11 @@ async function addToWandMenu() {
  * 확장 초기화
  */
 function initializeBookmarkManager() {
+    console.log('[Bookmark] === 북마크 매니저 초기화 시작 ===');
+    
     // 북마크 데이터 로드
     loadBookmarks();
+    console.log(`[Bookmark] 북마크 데이터 로드 완료: ${bookmarks.length}개`);
     
     // 기존 메시지에 아이콘 추가
     addBookmarkIconsToMessages();
@@ -462,9 +495,11 @@ function initializeBookmarkManager() {
     eventSource.on(event_types.MESSAGE_RECEIVED, handleMessageUpdate);
     eventSource.on(event_types.MESSAGE_SWIPED, handleMessageUpdate);
     eventSource.on(event_types.CHAT_CHANGED, handleMessageUpdate);
+    console.log('[Bookmark] 이벤트 리스너 등록 완료');
     
     // 북마크 아이콘 클릭 이벤트
     $(document).on('click', '.bookmark-icon', function(event) {
+        console.log('[Bookmark] 북마크 아이콘 클릭 이벤트 발생');
         event.preventDefault();
         event.stopPropagation();
         
@@ -472,16 +507,26 @@ function initializeBookmarkManager() {
         const messageElement = $(this).closest('.mes');
         const messageId = messageElement.attr('mesid');
         
+        console.log(`[Bookmark] 클릭된 요소:`, this);
+        console.log(`[Bookmark] 찾은 메시지 요소:`, messageElement[0]);
+        console.log(`[Bookmark] 메시지 ID: ${messageId}`);
+        
         if (messageId !== undefined) {
+            console.log(`[Bookmark] createBookmarkModal(${messageId}) 호출`);
             createBookmarkModal(messageId);
+        } else {
+            console.error('[Bookmark] 메시지 ID를 찾을 수 없습니다');
         }
     });
     
     // 요술봉 메뉴에 버튼 추가
     setTimeout(addToWandMenu, 1000);
+    
+    console.log('[Bookmark] === 북마크 매니저 초기화 완료 ===');
 }
 
 // jQuery 준비 완료 시 초기화
 jQuery(() => {
+    console.log('[Bookmark] jQuery 준비 완료, 북마크 매니저 초기화 시작');
     initializeBookmarkManager();
 });
