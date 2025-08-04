@@ -71,23 +71,65 @@ function saveBookmarks() {
 }
 
 /**
- * 메시지 ID로 스크롤 이동
+ * 메시지 ID로 이동 (SillyTavern 공식 명령어 사용)
  */
-function scrollToMessage(messageId) {
-    const messageElement = $(`.mes[mesid="${messageId}"]`);
-    if (messageElement.length > 0) {
-        messageElement[0].scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-        });
+async function jumpToMessage(messageId) {
+    try {
+        console.log(`[Bookmark] 메시지 ID ${messageId}로 이동 시작`);
         
-        // 강조 효과
-        messageElement.addClass('highlight-bookmark');
+        const chatInput = $('#send_textarea');
+        if (chatInput.length === 0) {
+            toastr.error('채팅 입력창을 찾을 수 없습니다.');
+            return;
+        }
+
+        // 기존 입력 내용 백업
+        const originalText = chatInput.val();
+        
+        // /chat-jump 명령어 실행
+        const jumpCommand = `/chat-jump ${messageId}`;
+        chatInput.val(jumpCommand);
+        chatInput.trigger('input');
+        
         setTimeout(() => {
-            messageElement.removeClass('highlight-bookmark');
-        }, 2000);
-    } else {
-        toastr.warning(`메시지 ID ${messageId}를 찾을 수 없습니다.`);
+            $('#send_but').click();
+            
+            // 명령어 실행 후 원래 텍스트 복원
+            setTimeout(() => {
+                chatInput.val(originalText || '');
+                chatInput.trigger('input');
+                console.log(`[Bookmark] 메시지 ID ${messageId}로 이동 완료`);
+                
+                // 이동 후 해당 메시지 강조 (약간의 지연 후)
+                setTimeout(() => {
+                    highlightMessage(messageId);
+                }, 1000);
+            }, 500);
+        }, 100);
+        
+        toastr.success(`메시지 #${messageId}로 이동합니다.`);
+        
+    } catch (error) {
+        console.error('[Bookmark] 메시지 이동 중 오류:', error);
+        toastr.error('메시지 이동 중 오류가 발생했습니다.');
+    }
+}
+
+/**
+ * 메시지 강조 효과
+ */
+function highlightMessage(messageId) {
+    try {
+        const messageElement = $(`.mes[mesid="${messageId}"]`);
+        if (messageElement.length > 0) {
+            messageElement.addClass('highlight-bookmark');
+            setTimeout(() => {
+                messageElement.removeClass('highlight-bookmark');
+            }, 3000);
+            console.log(`[Bookmark] 메시지 ID ${messageId} 강조 효과 적용`);
+        }
+    } catch (error) {
+        console.warn('[Bookmark] 메시지 강조 효과 실패:', error);
     }
 }
 
@@ -246,10 +288,18 @@ async function createBookmarkListModal() {
     // 북마크 클릭으로 메시지 이동
     currentModal.find('.bookmark-content').on('click', function() {
         const messageId = $(this).data('message-id');
-        closeBookmarkModal();
+        
+        // 모달 닫기
+        currentModal.removeClass('visible');
+        currentModal.find('.bookmark-list-modal').removeClass('visible');
+        
         setTimeout(() => {
-            scrollToMessage(messageId);
-        }, 100);
+            currentModal.remove();
+            currentModal = null;
+            
+            // 메시지로 이동
+            jumpToMessage(messageId);
+        }, 300);
     });
 
     // 설명 필드 변경 이벤트
@@ -388,18 +438,34 @@ async function confirmDeleteBookmark(bookmarkId) {
 }
 
 /**
- * 메시지에 북마크 아이콘 추가
+ * 메시지에 북마크 아이콘 추가 (star-main 방식 참고)
  */
 function addBookmarkIconsToMessages() {
     $('#chat').find('.mes').each(function() {
         const messageElement = $(this);
-        const extraButtonsContainer = messageElement.find('.extraMesButtons');
+        const buttonContainer = messageElement.find('.mes_block .ch_name .mes_buttons');
         
-        // extraMesButtons 컨테이너가 있고 이미 버튼이 없으면 추가
-        if (extraButtonsContainer.length && !extraButtonsContainer.find('.bookmark-icon').length) {
-            extraButtonsContainer.prepend(messageButtonHtml);
+        // mes_buttons 컨테이너가 있고 이미 버튼이 없으면 추가
+        if (buttonContainer.length && !buttonContainer.find('.bookmark-icon').length) {
+            const buttons = buttonContainer.children('.mes_button');
+            if (buttons.length >= 2) {
+                // 뒤에서 두 번째 버튼 앞에 삽입 (star-main 방식)
+                buttons.eq(-2).before(messageButtonHtml);
+            } else {
+                // 버튼이 적으면 맨 앞에 추가
+                buttonContainer.prepend(messageButtonHtml);
+            }
         }
     });
+}
+
+/**
+ * 새 메시지 핸들러 (star-main 방식 참고)
+ */
+function handleNewMessage() {
+    setTimeout(() => {
+        addBookmarkIconsToMessages();
+    }, 150);
 }
 
 /**
@@ -408,7 +474,7 @@ function addBookmarkIconsToMessages() {
 function handleMessageUpdate() {
     setTimeout(() => {
         addBookmarkIconsToMessages();
-    }, 100);
+    }, 150);
 }
 
 /**
@@ -443,10 +509,33 @@ function initializeBookmarkManager() {
     // 기존 메시지에 아이콘 추가
     addBookmarkIconsToMessages();
     
-    // 이벤트 리스너 설정
-    eventSource.on(event_types.MESSAGE_RECEIVED, handleMessageUpdate);
+    // 이벤트 리스너 설정 (star-main 방식 참고)
+    eventSource.on(event_types.MESSAGE_RECEIVED, handleNewMessage);
+    eventSource.on(event_types.MESSAGE_SENT, handleNewMessage);
     eventSource.on(event_types.MESSAGE_SWIPED, handleMessageUpdate);
+    eventSource.on(event_types.MESSAGE_UPDATED, handleMessageUpdate);
     eventSource.on(event_types.CHAT_CHANGED, handleMessageUpdate);
+    
+    // 추가 메시지 로딩 시 처리 (star-main 핵심 기능)
+    eventSource.on(event_types.MORE_MESSAGES_LOADED, () => {
+        setTimeout(() => {
+            console.log('[Bookmark] MORE_MESSAGES_LOADED 이벤트 - 아이콘 추가');
+            addBookmarkIconsToMessages();
+        }, 150);
+    });
+    
+    // DOM 변경 감시 (실시간 아이콘 추가)
+    const chatElement = document.getElementById('chat');
+    if (chatElement) {
+        const chatObserver = new MutationObserver((mutations) => {
+            if (mutations.some(m => m.addedNodes.length > 0)) {
+                requestAnimationFrame(addBookmarkIconsToMessages);
+            }
+        });
+        chatObserver.observe(chatElement, { childList: true });
+        console.log('[Bookmark] DOM MutationObserver 설정 완료');
+    }
+    
     console.log('[Bookmark] 이벤트 리스너 등록 완료');
     
     // 북마크 아이콘 클릭 이벤트
