@@ -1379,11 +1379,55 @@ async function importV2ToOriginalChats(chatBookmarks) {
                 force: true
             };
             
-            await fetch('/api/chats/save', {
+            console.log(`[Bookmark] v2.0 채팅 데이터 저장 요청:`, {
+                ch_name: saveRequestBody.ch_name,
+                file_name: saveRequestBody.file_name,
+                avatar_url: saveRequestBody.avatar_url,
+                chat_length: saveRequestBody.chat.length,
+                metadata_keys: Object.keys(saveRequestBody.chat[0].chat_metadata || {}),
+                bookmark_count: saveRequestBody.chat[0].chat_metadata?.[BOOKMARK_METADATA_KEY]?.length || 0
+            });
+            
+            const saveResponse = await fetch('/api/chats/save', {
                 method: 'POST',
                 headers: getRequestHeaders(),
                 body: JSON.stringify(saveRequestBody)
             });
+            
+            if (!saveResponse.ok) {
+                console.error(`[Bookmark] v2.0 채팅 데이터 저장 실패: ${saveResponse.status} - ${saveResponse.statusText}`);
+                const errorText = await saveResponse.text();
+                console.error(`[Bookmark] v2.0 저장 오류 응답:`, errorText);
+            } else {
+                const saveResult = await saveResponse.text();
+                console.log(`[Bookmark] v2.0 채팅 데이터 저장 응답:`, saveResult);
+                
+                // 저장 후 검증을 위해 다시 불러와서 확인
+                console.log(`[Bookmark] v2.0 저장 검증을 위해 채팅 데이터 다시 확인...`);
+                const verifyResponse = await fetch('/api/chats/get', {
+                    method: 'POST',
+                    headers: getRequestHeaders(),
+                    body: JSON.stringify({
+                        ch_name: currentCharacter.name,
+                        file_name: chatData.fileName.replace('.jsonl', ''),
+                        avatar_url: currentCharacter.avatar
+                    })
+                });
+                
+                if (verifyResponse.ok) {
+                    const verifyData = await verifyResponse.json();
+                    if (Array.isArray(verifyData) && verifyData.length > 0) {
+                        const verifyMetadata = verifyData[0].chat_metadata || verifyData[0];
+                        const verifyBookmarks = verifyMetadata[BOOKMARK_METADATA_KEY] || [];
+                        console.log(`[Bookmark] v2.0 저장 검증 결과: ${verifyBookmarks.length}개 북마크 확인됨`);
+                        if (verifyBookmarks.length !== mergedBookmarks.length) {
+                            console.error(`[Bookmark] v2.0 저장 검증 실패! 예상: ${mergedBookmarks.length}개, 실제: ${verifyBookmarks.length}개`);
+                        } else {
+                            console.log(`[Bookmark] v2.0 저장 검증 성공! ✅`);
+                        }
+                    }
+                }
+            }
             
             processedChats++;
             
