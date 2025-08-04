@@ -87,7 +87,7 @@
     padding: 8px 20px !important;
     border-bottom: 1px solid var(--SmartThemeBorderColor) !important;
     flex-shrink: 0;
-    background: linear-gradient(135deg, var(--SmartThemeBlurTintColor), var(--black30a)) !important;
+    background: var(--SmartThemeBlurTintColor) !important;
     gap: 10px;
 }
 
@@ -338,20 +338,36 @@
     background: rgba(255, 215, 0, 0.8);
 }
 
-/* 반응형 디자인 */
-@media (max-width: 768px) {
+/* 태블릿 반응형 디자인 */
+@media (max-width: 950px) {
+    .bookmark-modal-backdrop,
+    .bookmark-list-modal-backdrop {
+        align-items: flex-start;
+        padding-top: 3vh;
+        padding-bottom: 3vh;
+    }
+    
     .bookmark-modal,
     .bookmark-list-modal {
-        width: 95%;
+        width: 95vw;
+        height: 94vh;
         max-width: none;
+        transform: scale(0.98);
+        position: relative;
+        margin: 0 auto;
+    }
+    
+    .bookmark-modal.visible,
+    .bookmark-list-modal.visible {
+        transform: scale(1);
     }
     
     .bookmark-modal-header {
-        padding: 12px 15px;
+        padding: 8px 12px !important;
     }
     
     .bookmark-modal-body {
-        padding: 15px;
+        padding: 12px;
     }
     
     .bookmark-modal-footer {
@@ -363,16 +379,60 @@
     .bookmark-cancel-btn {
         width: 100%;
     }
+}
+
+/* 스마트폰 반응형 디자인 */
+@media (max-width: 480px) {
+    .bookmark-modal-backdrop,
+    .bookmark-list-modal-backdrop {
+        padding-top: 2vh;
+        padding-bottom: 2vh;
+    }
+    
+    .bookmark-modal,
+    .bookmark-list-modal {
+        width: 98vw;
+        height: 96vh;
+        border-radius: 8px;
+    }
+    
+    .bookmark-modal-header {
+        padding: 6px 10px !important;
+    }
+    
+    .bookmark-modal-header h3 {
+        font-size: 14px;
+    }
+    
+    .bookmark-modal-close {
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
+    }
+    
+    .bookmark-modal-body {
+        padding: 8px;
+    }
     
     .bookmark-item {
         flex-direction: column;
         align-items: flex-start;
+        padding: 12px;
     }
     
     .bookmark-actions {
         margin-left: 0;
         margin-top: 10px;
         align-self: flex-end;
+        flex-direction: row;
+        gap: 5px;
+    }
+    
+    .bookmark-edit-btn,
+    .bookmark-delete-btn {
+        min-width: 32px;
+        padding: 6px 8px;
+        font-size: 12px;
     }
 }
 
