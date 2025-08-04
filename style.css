@@ -87,7 +87,7 @@
     padding: 8px 20px !important;
     border-bottom: 1px solid var(--SmartThemeBorderColor) !important;
     flex-shrink: 0;
-    background: var(--SmartThemeBlurTintColor) !important;
+    background: linear-gradient(135deg, var(--SmartThemeBlurTintColor), var(--black30a)) !important;
     gap: 10px;
 }
 
@@ -220,7 +220,7 @@
     padding: 15px;
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 8px;
-    background-color: var(--SmartThemeBlurTintColor);
+    background-color: var(--black30a);
     transition: all 0.2s ease;
     cursor: pointer;
 }
@@ -305,8 +305,8 @@
 }
 
 .bookmark-delete-btn:hover {
-    background-color: #dc3545;
-    color: white;
+    background-color: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBlurTintColor);
     transform: scale(1.05);
     filter: brightness(1.1);
 }
