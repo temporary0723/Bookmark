@@ -1278,7 +1278,10 @@ async function importV2ToOriginalChats(chatBookmarks) {
         try {
             console.log(`[Bookmark] v2.0 채팅 "${chatData.fileName}" 처리 시작`);
             console.log(`[Bookmark] v2.0 현재 채팅 ID: "${context.chatId}"`);
-            console.log(`[Bookmark] v2.0 현재 채팅 판별: isCurrent=${chatData.isCurrent}, fileName===chatId=${chatData.fileName === context.chatId}`);
+            
+            // 파일명에서 .jsonl 확장자 제거하여 비교
+            const chatFileNameClean = chatData.fileName.replace('.jsonl', '');
+            console.log(`[Bookmark] v2.0 현재 채팅 판별: isCurrent=${chatData.isCurrent}, fileName(${chatFileNameClean})===chatId=${chatFileNameClean === context.chatId}`);
             
             // 모든 채팅을 동일한 방식으로 처리 (현재 채팅 포함)
             
@@ -1413,8 +1416,8 @@ async function importV2ToOriginalChats(chatBookmarks) {
             }
             
             // 현재 채팅인 경우 메모리에서도 북마크를 다시 로드
-            const isCurrentChat = chatData.isCurrent || chatData.fileName === context.chatId;
-            console.log(`[Bookmark] v2.0 현재 채팅 확인: ${isCurrentChat} (isCurrent: ${chatData.isCurrent}, fileName: "${chatData.fileName}", chatId: "${context.chatId}")`);
+            const isCurrentChat = chatData.isCurrent || chatFileNameClean === context.chatId;
+            console.log(`[Bookmark] v2.0 현재 채팅 확인: ${isCurrentChat} (isCurrent: ${chatData.isCurrent}, fileName: "${chatFileNameClean}", chatId: "${context.chatId}")`);
             
             if (isCurrentChat) {
                 console.log(`[Bookmark] v2.0 현재 채팅이므로 메모리 북마크를 다시 로드합니다.`);
