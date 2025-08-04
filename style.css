@@ -1,0 +1,369 @@
+/* 북마크 매니저 확장 스타일 */
+
+/* 북마크 아이콘 스타일 */
+.bookmark-icon {
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.bookmark-icon:hover {
+    background-color: var(--black30a);
+    color: var(--SmartThemeBodyColor);
+}
+
+.bookmark-icon i {
+    font-size: 14px;
+}
+
+/* 강조 효과 */
+.highlight-bookmark {
+    border: 2px solid var(--SmartThemeQuoteColor) !important;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+/* 모달 배경 */
+.bookmark-modal-backdrop,
+.bookmark-list-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.bookmark-modal-backdrop.visible,
+.bookmark-list-modal-backdrop.visible {
+    opacity: 1;
+}
+
+/* 모달 컨테이너 */
+.bookmark-modal,
+.bookmark-list-modal {
+    background-color: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 90%;
+    max-height: 90%;
+    overflow: hidden;
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.bookmark-modal.visible,
+.bookmark-list-modal.visible {
+    transform: scale(1);
+}
+
+.bookmark-modal {
+    width: 500px;
+}
+
+.bookmark-list-modal {
+    width: 700px;
+    max-height: 80vh;
+}
+
+/* 모달 헤더 */
+.bookmark-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--SmartThemeBodyColor);
+    color: var(--SmartThemeEmColor);
+}
+
+.bookmark-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.bookmark-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--SmartThemeQuoteColor);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.bookmark-modal-close:hover {
+    background-color: var(--black30a);
+    color: var(--SmartThemeEmColor);
+}
+
+/* 모달 본문 */
+.bookmark-modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--SmartThemeEmColor);
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 5px;
+    background-color: var(--SmartThemeBodyColor);
+    color: var(--SmartThemeEmColor);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--SmartThemeQuoteColor);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+}
+
+/* 모달 푸터 */
+.bookmark-modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--SmartThemeBorderColor);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: var(--SmartThemeBodyColor);
+}
+
+.bookmark-confirm-btn,
+.bookmark-cancel-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.bookmark-confirm-btn {
+    background-color: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBodyColor);
+}
+
+.bookmark-confirm-btn:hover {
+    background-color: rgba(255, 215, 0, 0.8);
+}
+
+.bookmark-cancel-btn {
+    background-color: var(--black30a);
+    color: var(--SmartThemeEmColor);
+}
+
+.bookmark-cancel-btn:hover {
+    background-color: var(--black50a);
+}
+
+/* 북마크 목록 */
+.bookmark-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bookmark-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    background-color: var(--SmartThemeBodyColor);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.bookmark-item:hover {
+    background-color: var(--black30a);
+    border-color: var(--SmartThemeQuoteColor);
+}
+
+.bookmark-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.bookmark-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.bookmark-name {
+    font-weight: 600;
+    color: var(--SmartThemeEmColor);
+    font-size: 16px;
+}
+
+.bookmark-message-id {
+    font-size: 12px;
+    color: var(--SmartThemeQuoteColor);
+    background-color: var(--black30a);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-family: monospace;
+}
+
+.bookmark-description {
+    color: var(--SmartThemeBodyColor);
+    font-size: 14px;
+    margin-bottom: 5px;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.bookmark-date {
+    font-size: 12px;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.7;
+}
+
+/* 북마크 액션 버튼 */
+.bookmark-actions {
+    display: flex;
+    gap: 5px;
+    margin-left: 10px;
+}
+
+.bookmark-edit-btn,
+.bookmark-delete-btn {
+    padding: 6px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    background-color: var(--black30a);
+    color: var(--SmartThemeEmColor);
+}
+
+.bookmark-edit-btn:hover {
+    background-color: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBodyColor);
+}
+
+.bookmark-delete-btn:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* 빈 북마크 메시지 */
+.no-bookmarks {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--SmartThemeQuoteColor);
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+/* 스크롤바 스타일 */
+.bookmark-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.bookmark-modal-body::-webkit-scrollbar-track {
+    background: var(--SmartThemeBodyColor);
+}
+
+.bookmark-modal-body::-webkit-scrollbar-thumb {
+    background: var(--SmartThemeQuoteColor);
+    border-radius: 4px;
+}
+
+.bookmark-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.8);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .bookmark-modal,
+    .bookmark-list-modal {
+        width: 95%;
+        max-width: none;
+    }
+    
+    .bookmark-modal-header {
+        padding: 12px 15px;
+    }
+    
+    .bookmark-modal-body {
+        padding: 15px;
+    }
+    
+    .bookmark-modal-footer {
+        padding: 12px 15px;
+        flex-direction: column;
+    }
+    
+    .bookmark-confirm-btn,
+    .bookmark-cancel-btn {
+        width: 100%;
+    }
+    
+    .bookmark-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .bookmark-actions {
+        margin-left: 0;
+        margin-top: 10px;
+        align-self: flex-end;
+    }
+}
+
+/* 다크 테마 지원 */
+@media (prefers-color-scheme: dark) {
+    .bookmark-modal-backdrop,
+    .bookmark-list-modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* 애니메이션 */
+@keyframes bookmark-highlight {
+    0% { box-shadow: 0 0 0 rgba(255, 215, 0, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
+    100% { box-shadow: 0 0 0 rgba(255, 215, 0, 0.5); }
+}
+
+.highlight-bookmark {
+    animation: bookmark-highlight 1s ease-in-out;
+}

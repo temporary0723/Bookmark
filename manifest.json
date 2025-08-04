@@ -1,0 +1,11 @@
+{
+    "display_name": "북마크 매니저",
+    "loading_order": 8,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Bookmark Extension",
+    "version": "1.0.0",
+    "homePage": ""
+}
