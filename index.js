@@ -280,6 +280,16 @@ async function createBookmarkListModal() {
                     <button class="bookmark-modal-close" title="닫기">×</button>
                 </div>
                 <div class="bookmark-modal-body">
+                    <div class="bookmark-data-controls">
+                        <button class="bookmark-import-btn" title="책갈피 데이터 불러오기">
+                            <i class="fa-solid fa-file-import"></i>
+                            <span>데이터 불러오기</span>
+                        </button>
+                        <button class="bookmark-export-btn" title="책갈피 데이터 내보내기">
+                            <i class="fa-solid fa-file-export"></i>
+                            <span>데이터 내보내기</span>
+                        </button>
+                    </div>
                     ${bookmarks.length === 0 
                         ? '<div class="no-bookmarks">저장된 책갈피가 없습니다.</div>' 
                         : `<div class="bookmark-list">${bookmarkList}</div>`
@@ -347,6 +357,18 @@ async function createBookmarkListModal() {
     // 설명 필드 클릭 시 이동 방지
     currentModal.find('.bookmark-description-field').on('click', function(e) {
         e.stopPropagation();
+    });
+
+    // 데이터 불러오기 버튼 이벤트
+    currentModal.find('.bookmark-import-btn').on('click', function(e) {
+        e.stopPropagation();
+        importBookmarkData();
+    });
+
+    // 데이터 내보내기 버튼 이벤트
+    currentModal.find('.bookmark-export-btn').on('click', function(e) {
+        e.stopPropagation();
+        exportBookmarkData();
     });
 
     // 수정 버튼 (이름만 수정)
@@ -474,6 +496,113 @@ async function confirmDeleteBookmark(bookmarkId) {
         // 목록 모달 새로고침
         closeBookmarkModal();
         setTimeout(() => createBookmarkListModal(), 100);
+    }
+}
+
+/**
+ * 책갈피 데이터 내보내기
+ */
+function exportBookmarkData() {
+    try {
+        const exportData = {
+            bookmarks: bookmarks,
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `bookmarks_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        toastr.success('책갈피 데이터가 내보내기되었습니다.');
+        console.log('[Bookmark] 데이터 내보내기 완료');
+    } catch (error) {
+        console.error('[Bookmark] 데이터 내보내기 실패:', error);
+        toastr.error('데이터 내보내기 중 오류가 발생했습니다.');
+    }
+}
+
+/**
+ * 책갈피 데이터 불러오기
+ */
+function importBookmarkData() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+                    
+                    // 데이터 유효성 검사
+                    if (!importData.bookmarks || !Array.isArray(importData.bookmarks)) {
+                        toastr.error('유효하지 않은 책갈피 파일입니다.');
+                        return;
+                    }
+                    
+                    // 중복 확인 및 병합
+                    let importedCount = 0;
+                    let duplicatedCount = 0;
+                    
+                    importData.bookmarks.forEach(importBookmark => {
+                        // 중복 검사 (messageId와 name이 모두 같은 경우)
+                        const exists = bookmarks.some(existing => 
+                            existing.messageId === importBookmark.messageId && 
+                            existing.name === importBookmark.name
+                        );
+                        
+                        if (!exists) {
+                            // 새 ID 생성
+                            const newBookmark = {
+                                ...importBookmark,
+                                id: Date.now() + Math.random()
+                            };
+                            bookmarks.push(newBookmark);
+                            importedCount++;
+                        } else {
+                            duplicatedCount++;
+                        }
+                    });
+                    
+                    // 정렬 및 저장
+                    bookmarks.sort((a, b) => a.messageId - b.messageId);
+                    saveBookmarks();
+                    refreshBookmarkIcons();
+                    
+                    // 결과 알림
+                    if (importedCount > 0) {
+                        toastr.success(`${importedCount}개의 책갈피를 불러왔습니다.${duplicatedCount > 0 ? ` (중복 ${duplicatedCount}개 제외)` : ''}`);
+                        
+                        // 목록 새로고침
+                        setTimeout(() => createBookmarkListModal(), 100);
+                    } else {
+                        toastr.info('새로운 책갈피가 없습니다. (모두 중복)');
+                    }
+                    
+                    console.log(`[Bookmark] 데이터 불러오기 완료 - 추가: ${importedCount}, 중복: ${duplicatedCount}`);
+                } catch (error) {
+                    console.error('[Bookmark] 파일 파싱 실패:', error);
+                    toastr.error('파일을 읽을 수 없습니다.');
+                }
+            };
+            
+            reader.readAsText(file);
+        };
+        
+        input.click();
+    } catch (error) {
+        console.error('[Bookmark] 데이터 불러오기 실패:', error);
+        toastr.error('데이터 불러오기 중 오류가 발생했습니다.');
     }
 }
 

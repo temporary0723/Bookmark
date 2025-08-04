@@ -28,9 +28,7 @@
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: var(--black70a) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background-color: rgba(0, 0, 0, 0.9) !important;
     align-items: center;
     justify-content: center;
     opacity: 0;
@@ -205,6 +203,46 @@
 
 .bookmark-cancel-btn:hover {
     background-color: var(--black50a);
+}
+
+/* 책갈피 데이터 제어 버튼 */
+.bookmark-data-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.bookmark-import-btn,
+.bookmark-export-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background-color: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+    min-width: 150px;
+    justify-content: center;
+}
+
+.bookmark-import-btn:hover,
+.bookmark-export-btn:hover {
+    background-color: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBlurTintColor);
+    transform: scale(1.02);
+    filter: brightness(1.1);
+}
+
+.bookmark-import-btn i,
+.bookmark-export-btn i {
+    font-size: 16px;
 }
 
 /* 북마크 목록 */
@@ -412,6 +450,18 @@
     
     .bookmark-modal-body {
         padding: 8px;
+    }
+    
+    .bookmark-data-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .bookmark-import-btn,
+    .bookmark-export-btn {
+        flex: none;
+        min-width: auto;
+        width: 100%;
     }
     
     .bookmark-item {
