@@ -409,26 +409,14 @@ async function confirmDeleteBookmark(bookmarkId) {
  * 메시지에 북마크 아이콘 추가
  */
 function addBookmarkIconsToMessages() {
-    $('.mes').each(function() {
+    $('#chat').find('.mes').each(function() {
         const messageElement = $(this);
-        const messageId = messageElement.attr('mesid');
+        const extraButtonsContainer = messageElement.find('.extraMesButtons');
         
-        // 이미 아이콘이 있으면 스킵
-        if (messageElement.find('.bookmark-icon').length > 0) {
-            return;
+        // extraMesButtons 컨테이너가 있고 이미 버튼이 없으면 추가
+        if (extraButtonsContainer.length && !extraButtonsContainer.find('.bookmark-icon').length) {
+            extraButtonsContainer.prepend(messageButtonHtml);
         }
-
-        // mes_buttons 컨테이너 찾기
-        let buttonsContainer = messageElement.find('.mes_buttons');
-        
-        // mes_buttons가 없으면 생성
-        if (buttonsContainer.length === 0) {
-            buttonsContainer = $('<div class="mes_buttons"></div>');
-            messageElement.find('.mes_block').append(buttonsContainer);
-        }
-
-        // 북마크 아이콘 추가
-        buttonsContainer.append(messageButtonHtml);
     });
 }
 
