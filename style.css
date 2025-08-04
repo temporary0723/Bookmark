@@ -1,17 +1,9 @@
 /* 북마크 매니저 확장 스타일 */
 
-/* 북마크 아이콘 스타일 */
+/* 북마크 아이콘 스타일 (다른 메시지 버튼과 동일) */
 .bookmark-icon {
     cursor: pointer;
-    padding: 5px;
-    border-radius: 3px;
     transition: all 0.2s ease;
-    color: var(--SmartThemeQuoteColor);
-}
-
-.bookmark-icon:hover {
-    background-color: var(--black30a);
-    color: var(--SmartThemeBodyColor);
 }
 
 .bookmark-icon i {

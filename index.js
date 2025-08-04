@@ -159,6 +159,12 @@ async function createBookmarkModal(messageId) {
         
         // 북마크 추가 (설명은 빈 문자열로)
         addBookmark(messageId, bookmarkName, '');
+        
+        // 북마크 상태 새로고침
+        setTimeout(() => {
+            refreshBookmarkIcons();
+        }, 100);
+        
         toastr.success('북마크가 추가되었습니다.');
     } else {
         console.log('[Bookmark] 북마크 추가 취소됨');
@@ -429,6 +435,12 @@ async function confirmDeleteBookmark(bookmarkId) {
 
     if (result === POPUP_RESULT.AFFIRMATIVE) {
         deleteBookmark(bookmarkId);
+        
+        // 북마크 상태 새로고침
+        setTimeout(() => {
+            refreshBookmarkIcons();
+        }, 100);
+        
         toastr.success('북마크가 삭제되었습니다.');
         
         // 목록 모달 새로고침
@@ -438,29 +450,50 @@ async function confirmDeleteBookmark(bookmarkId) {
 }
 
 /**
- * 메시지에 북마크 아이콘 추가 (star-main 방식 참고)
+ * 메시지에 북마크 아이콘 추가
  */
 function addBookmarkIconsToMessages() {
     $('#chat').find('.mes').each(function() {
         const messageElement = $(this);
-        const buttonContainer = messageElement.find('.mes_block .ch_name .mes_buttons');
+        const buttonContainer = messageElement.find('.extraMesButtons');
         
-        // mes_buttons 컨테이너가 있고 이미 버튼이 없으면 추가
+        // extraMesButtons 컨테이너가 있고 이미 버튼이 없으면 추가
         if (buttonContainer.length && !buttonContainer.find('.bookmark-icon').length) {
-            const buttons = buttonContainer.children('.mes_button');
-            if (buttons.length >= 2) {
-                // 뒤에서 두 번째 버튼 앞에 삽입 (star-main 방식)
-                buttons.eq(-2).before(messageButtonHtml);
+            buttonContainer.prepend(messageButtonHtml);
+        }
+    });
+    
+    // 아이콘 추가 후 북마크 상태 새로고침
+    refreshBookmarkIcons();
+}
+
+/**
+ * 북마크 상태 새로고침 (북마크된 메시지만 em변수 색상 적용)
+ */
+function refreshBookmarkIcons() {
+    $('#chat').find('.mes').each(function() {
+        const messageElement = $(this);
+        const messageId = messageElement.attr('mesid');
+        const bookmarkIcon = messageElement.find('.bookmark-icon i');
+        
+        if (messageId && bookmarkIcon.length) {
+            const isBookmarked = bookmarks.some(bookmark => bookmark.messageId === parseInt(messageId));
+            
+            if (isBookmarked) {
+                // 북마크된 메시지: fa-solid + em변수 색상
+                bookmarkIcon.removeClass('fa-regular').addClass('fa-solid');
+                bookmarkIcon.css('color', 'var(--SmartThemeEmColor)');
             } else {
-                // 버튼이 적으면 맨 앞에 추가
-                buttonContainer.prepend(messageButtonHtml);
+                // 북마크되지 않은 메시지: fa-regular + 기본 색상
+                bookmarkIcon.removeClass('fa-solid').addClass('fa-regular');
+                bookmarkIcon.css('color', '');
             }
         }
     });
 }
 
 /**
- * 새 메시지 핸들러 (star-main 방식 참고)
+ * 새 메시지 핸들러
  */
 function handleNewMessage() {
     setTimeout(() => {
@@ -509,14 +542,14 @@ function initializeBookmarkManager() {
     // 기존 메시지에 아이콘 추가
     addBookmarkIconsToMessages();
     
-    // 이벤트 리스너 설정 (star-main 방식 참고)
+    // 이벤트 리스너 설정
     eventSource.on(event_types.MESSAGE_RECEIVED, handleNewMessage);
     eventSource.on(event_types.MESSAGE_SENT, handleNewMessage);
     eventSource.on(event_types.MESSAGE_SWIPED, handleMessageUpdate);
     eventSource.on(event_types.MESSAGE_UPDATED, handleMessageUpdate);
     eventSource.on(event_types.CHAT_CHANGED, handleMessageUpdate);
     
-    // 추가 메시지 로딩 시 처리 (star-main 핵심 기능)
+    // 추가 메시지 로딩 시 처리 (핵심 기능)
     eventSource.on(event_types.MORE_MESSAGES_LOADED, () => {
         setTimeout(() => {
             console.log('[Bookmark] MORE_MESSAGES_LOADED 이벤트 - 아이콘 추가');
