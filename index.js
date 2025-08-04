@@ -99,7 +99,7 @@ function updateBookmarkIndex(characterId, chatId, bookmarkCount) {
     }
     
     saveSettingsDebounced();
-    console.log(`[Bookmark] 인덱스 업데이트: 캐릭터 ${characterId}, 채팅 ${chatId}, 북마크 수: ${bookmarkCount}`);
+    console.log(`[Bookmark] 인덱스 업데이트: 캐릭터 ${characterId}, 채팅 ${chatId}, 책갈피 수: ${bookmarkCount}`);
 }
 
 // 북마크 인덱스 조회
@@ -186,7 +186,7 @@ async function deleteAllBookmarksFromAllCharacters() {
                 continue;
             }
             
-            console.log(`[Bookmark] 캐릭터 "${character.name}" 북마크 삭제 중...`);
+            console.log(`[Bookmark] 캐릭터 "${character.name}" 책갈피 삭제 중...`);
             
             for (const [chatId] of Object.entries(characterChats)) {
                 try {
@@ -325,7 +325,7 @@ function migrateOldBookmarks() {
             return;
         }
 
-        console.log(`[Bookmark] 기존 북마크 ${parsedOldBookmarks.length}개를 현재 채팅으로 마이그레이션합니다.`);
+        console.log(`[Bookmark] 기존 책갈피 ${parsedOldBookmarks.length}개를 현재 채팅으로 마이그레이션합니다.`);
 
         const context = getContext();
         if (context && context.chatMetadata) {
@@ -334,7 +334,7 @@ function migrateOldBookmarks() {
             if (!existingBookmarks || !Array.isArray(existingBookmarks) || existingBookmarks.length === 0) {
                 context.chatMetadata[BOOKMARK_METADATA_KEY] = [...parsedOldBookmarks];
                 saveMetadataDebounced();
-                console.log('[Bookmark] 기존 북마크를 현재 채팅으로 마이그레이션 완료');
+                console.log('[Bookmark] 기존 책갈피를 현재 채팅으로 마이그레이션 완료');
             }
         }
 
@@ -373,9 +373,9 @@ function loadBookmarks() {
         
         if (savedBookmarks && Array.isArray(savedBookmarks)) {
             bookmarks = savedBookmarks;
-            console.log(`[Bookmark] 현재 채팅에서 ${bookmarks.length}개의 북마크를 로드했습니다.`);
+            console.log(`[Bookmark] 현재 채팅에서 ${bookmarks.length}개의 책갈피를 로드했습니다.`);
             if (bookmarks.length > 0) {
-                console.log(`[Bookmark] 첫 번째 북마크 예시:`, {
+                console.log(`[Bookmark] 첫 번째 책갈피 예시:`, {
                     id: bookmarks[0].id,
                     messageId: bookmarks[0].messageId,
                     name: bookmarks[0].name
@@ -383,7 +383,7 @@ function loadBookmarks() {
             }
         } else {
             bookmarks = [];
-            console.log('[Bookmark] 현재 채팅에 저장된 북마크가 없습니다. 빈 배열로 초기화.');
+            console.log('[Bookmark] 현재 채팅에 저장된 책갈피가 없습니다. 빈 배열로 초기화.');
         }
     } catch (error) {
         console.error('북마크 로드 실패:', error);
@@ -398,7 +398,7 @@ function saveBookmarks() {
     try {
         const context = getContext();
         if (!context || !context.chatMetadata) {
-            console.error('[Bookmark] 컨텍스트 또는 메타데이터를 찾을 수 없어 북마크를 저장할 수 없습니다.');
+            console.error('[Bookmark] 컨텍스트 또는 메타데이터를 찾을 수 없어 책갈피를 저장할 수 없습니다.');
             return;
         }
 
@@ -411,9 +411,9 @@ function saveBookmarks() {
         // 인덱스 업데이트
         updateBookmarkIndex(context.characterId, context.chatId, bookmarks.length);
         
-        console.log(`[Bookmark] 현재 채팅에 ${bookmarks.length}개의 북마크를 저장했습니다.`);
+        console.log(`[Bookmark] 현재 채팅에 ${bookmarks.length}개의 책갈피를 저장했습니다.`);
     } catch (error) {
-        console.error('북마크 저장 실패:', error);
+        console.error('책갈피 저장 실패:', error);
     }
 }
 
@@ -505,7 +505,7 @@ async function showBookmarkRemoveConfirm(messageId) {
             refreshBookmarkIcons();
             refreshBookmarkListInModal(); // 모달이 열려있으면 새로고침
             toastr.success(`책갈피 "${deletedBookmark.name}"가 삭제되었습니다.`);
-            console.log(`[Bookmark] 북마크 삭제 완료: ${deletedBookmark.name}`);
+            console.log(`[Bookmark] 책갈피 삭제 완료: ${deletedBookmark.name}`);
         }
     }
 }
@@ -526,7 +526,7 @@ async function createBookmarkModal(messageId) {
     
     if (result && result.trim()) {
         const bookmarkName = result.trim();
-        console.log(`[Bookmark] 북마크 추가 - 이름: "${bookmarkName}"`);
+        console.log(`[Bookmark] 책갈피 추가 - 이름: "${bookmarkName}"`);
         
         // 북마크 추가 (설명은 빈 문자열로)
         addBookmark(messageId, bookmarkName, '');
@@ -539,7 +539,7 @@ async function createBookmarkModal(messageId) {
         
         toastr.success('책갈피가 추가되었습니다.');
     } else {
-        console.log('[Bookmark] 북마크 추가 취소됨');
+        console.log('[Bookmark] 책갈피 추가 취소됨');
     }
 }
 
@@ -565,15 +565,15 @@ function addBookmark(messageId, name, description) {
         createdAt: new Date().toISOString()
     };
 
-    console.log('[Bookmark] 북마크 객체 생성:', bookmark);
+    console.log('[Bookmark] 책갈피 객체 생성:', bookmark);
     
     bookmarks.push(bookmark);
     bookmarks.sort((a, b) => a.messageId - b.messageId);
     
-    console.log(`[Bookmark] 북마크 배열에 추가 완료. 총 ${bookmarks.length}개`);
+    console.log(`[Bookmark] 책갈피 배열에 추가 완료. 총 ${bookmarks.length}개`);
     
     saveBookmarks();
-    console.log('[Bookmark] 북마크 저장 완료');
+    console.log('[Bookmark] 책갈피 저장 완료');
 }
 
 /**
@@ -607,7 +607,7 @@ function refreshBookmarkListInModal() {
         return; // 모달이 열려있지 않으면 아무것도 하지 않음
     }
     
-    console.log('[Bookmark] 모달 내 북마크 리스트 새로고침');
+    console.log('[Bookmark] 모달 내 책갈피 리스트 새로고침');
     
     // 새로운 북마크 리스트 HTML 생성
     const bookmarkList = bookmarks.map(bookmark => `
@@ -811,7 +811,7 @@ async function editBookmarkModal(bookmarkId) {
     const bookmark = bookmarks.find(b => b.id === bookmarkId);
     if (!bookmark) return;
 
-    console.log(`[Bookmark] 북마크 수정 모달 - ID: ${bookmarkId}`);
+    console.log(`[Bookmark] 책갈피 수정 모달 - ID: ${bookmarkId}`);
 
     // 북마크 이름 수정
     const nameResult = await callGenericPopup(
@@ -821,7 +821,7 @@ async function editBookmarkModal(bookmarkId) {
     );
 
     if (nameResult === false || nameResult === null) {
-        console.log('[Bookmark] 북마크 이름 수정 취소됨');
+        console.log('[Bookmark] 책갈피 이름 수정 취소됨');
         createBookmarkListModal(); // 목록으로 돌아가기
         return;
     }
@@ -846,7 +846,7 @@ async function editBookmarkModal(bookmarkId) {
         editBookmark(bookmarkId, newName, bookmark.description);
         toastr.success('책갈피 이름이 수정되었습니다.');
     } else {
-        console.log(`[Bookmark] 북마크 수정 완료 - 이름: "${newName}", 설명: "${descResult}"`);
+        console.log(`[Bookmark] 책갈피 수정 완료 - 이름: "${newName}", 설명: "${descResult}"`);
         editBookmark(bookmarkId, newName, descResult);
         toastr.success('책갈피가 수정되었습니다.');
     }
@@ -862,7 +862,7 @@ async function editBookmarkNameOnly(bookmarkId) {
     const bookmark = bookmarks.find(b => b.id === bookmarkId);
     if (!bookmark) return;
 
-    console.log(`[Bookmark] 북마크 이름 수정 - ID: ${bookmarkId}`);
+    console.log(`[Bookmark] 책갈피 이름 수정 - ID: ${bookmarkId}`);
 
     const nameResult = await callGenericPopup(
         `책갈피 이름 수정 (메시지 ID: ${bookmark.messageId})`,
@@ -871,7 +871,7 @@ async function editBookmarkNameOnly(bookmarkId) {
     );
 
     if (nameResult === false || nameResult === null) {
-        console.log('[Bookmark] 북마크 이름 수정 취소됨');
+        console.log('[Bookmark] 책갈피 이름 수정 취소됨');
         return;
     }
 
@@ -925,7 +925,7 @@ async function collectAllBookmarksFromAllCharacters() {
     
     try {
         if (!context || !context.characters || !Array.isArray(context.characters)) {
-            console.warn('[Bookmark] 캐릭터 목록을 찾을 수 없어 현재 채팅 북마크만 수집합니다.');
+            console.warn('[Bookmark] 캐릭터 목록을 찾을 수 없어 현재 채팅 책갈피만 수집합니다.');
             return [{
                 characterName: '현재 캐릭터',
                 characterId: context.characterId || 'unknown',
@@ -942,11 +942,11 @@ async function collectAllBookmarksFromAllCharacters() {
         const charactersWithBookmarks = Object.keys(bookmarkIndex);
         
         if (charactersWithBookmarks.length === 0) {
-            console.log('[Bookmark] 인덱스에서 북마크가 있는 캐릭터를 찾지 못했습니다.');
+            console.log('[Bookmark] 인덱스에서 책갈피가 있는 캐릭터를 찾지 못했습니다.');
             return [];
         }
 
-        console.log(`[Bookmark] 인덱스 기반 수집: ${charactersWithBookmarks.length}개 캐릭터에서 북마크를 수집합니다...`);
+        console.log(`[Bookmark] 인덱스 기반 수집: ${charactersWithBookmarks.length}개 캐릭터에서 책갈피를 수집합니다...`);
         let totalProcessedChats = 0;
         let totalBookmarks = 0;
 
@@ -1048,7 +1048,7 @@ async function collectAllBookmarksFromAllCharacters() {
                                 bookmarks: chatBookmarks
                             });
                             totalBookmarks += chatBookmarks.length;
-                            console.log(`[Bookmark] 캐릭터 "${character.name}" 채팅 "${chatName}": ${chatBookmarks.length}개 북마크 수집`);
+                            console.log(`[Bookmark] 캐릭터 "${character.name}" 채팅 "${chatName}": ${chatBookmarks.length}개 책갈피 수집`);
                         }
 
                         totalProcessedChats++;
@@ -1073,11 +1073,11 @@ async function collectAllBookmarksFromAllCharacters() {
             }
         }
 
-        console.log(`[Bookmark] 인덱스 기반 수집 완료: ${allCharacterBookmarks.length}개 캐릭터, ${totalProcessedChats}개 채팅, 총 ${totalBookmarks}개 북마크`);
+        console.log(`[Bookmark] 인덱스 기반 수집 완료: ${allCharacterBookmarks.length}개 캐릭터, ${totalProcessedChats}개 채팅, 총 ${totalBookmarks}개 책갈피`);
         return allCharacterBookmarks;
 
     } catch (error) {
-        console.error('[Bookmark] 모든 캐릭터 북마크 수집 중 오류:', error);
+        console.error('[Bookmark] 모든 캐릭터 책갈피 수집 중 오류:', error);
         // 오류 발생 시 현재 채팅 북마크만 반환
         return [{
             characterName: '현재 캐릭터',
@@ -1143,7 +1143,7 @@ async function exportAllCharactersBookmarks() {
         link.click();
         
         toastr.success(`모든 캐릭터의 책갈피가 내보내기되었습니다. (${allCharacterBookmarks.length}개 캐릭터, ${totalChats}개 채팅, 총 ${totalBookmarks}개 책갈피) ⚡ 인덱스 최적화 적용`);
-        console.log('[Bookmark] 모든 캐릭터 북마크 내보내기 완료 (인덱스 기반)');
+        console.log('[Bookmark] 모든 캐릭터 책갈피 내보내기 완료 (인덱스 기반)');
     } catch (error) {
         console.error('[Bookmark] 데이터 내보내기 실패:', error);
         toastr.error('데이터 내보내기 중 오류가 발생했습니다.');
@@ -1245,7 +1245,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
             
             for (const chatData of charData.chats) {
                 try {
-                    console.log(`[Bookmark] 채팅 "${chatData.chatName}" (${chatData.fileName}) 처리 시작 - 북마크 수: ${chatData.bookmarks.length}`);
+                    console.log(`[Bookmark] 채팅 "${chatData.chatName}" (${chatData.fileName}) 처리 시작 - 책갈피 수: ${chatData.bookmarks.length}`);
                     
                     // 현재 캐릭터의 현재 채팅인 경우
                     const targetCharIndex = context.characters.indexOf(targetCharacter);
@@ -1269,7 +1269,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         bookmarks.sort((a, b) => a.messageId - b.messageId);
                         saveBookmarks();
                         processedChats++;
-                        console.log(`[Bookmark] 현재 채팅에 ${chatData.bookmarks.length}개 북마크 추가 완료`);
+                        console.log(`[Bookmark] 현재 채팅에 ${chatData.bookmarks.length}개 책갈피 추가 완료`);
                         continue;
                     }
                     
@@ -1316,9 +1316,9 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         chatMetadata = {};
                     }
                     
-                    // 기존 북마크와 병합
+                    // 기존 책갈피와 병합
                     const existingBookmarks = chatMetadata[BOOKMARK_METADATA_KEY] || [];
-                    console.log(`[Bookmark] 기존 북마크 수: ${existingBookmarks.length}, 추가할 북마크 수: ${chatData.bookmarks.length}`);
+                    console.log(`[Bookmark] 기존 책갈피 수: ${existingBookmarks.length}, 추가할 책갈피 수: ${chatData.bookmarks.length}`);
                     
                     const mergedBookmarks = [...existingBookmarks];
                     let importedForThisChat = 0;
@@ -1339,7 +1339,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                         }
                     });
                     
-                    console.log(`[Bookmark] 이 채팅에 ${importedForThisChat}개 북마크 추가됨 (총 ${mergedBookmarks.length}개)`);
+                    console.log(`[Bookmark] 이 채팅에 ${importedForThisChat}개 책갈피 추가됨 (총 ${mergedBookmarks.length}개)`);
                     
                     // 채팅 메타데이터 업데이트
                     chatMetadata[BOOKMARK_METADATA_KEY] = mergedBookmarks.sort((a, b) => a.messageId - b.messageId);
@@ -1409,7 +1409,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                             if (Array.isArray(verifyData) && verifyData.length > 0) {
                                 const verifyMetadata = verifyData[0].chat_metadata || verifyData[0];
                                 const verifyBookmarks = verifyMetadata[BOOKMARK_METADATA_KEY] || [];
-                                console.log(`[Bookmark] 저장 검증 결과: ${verifyBookmarks.length}개 북마크 확인됨`);
+                                console.log(`[Bookmark] 저장 검증 결과: ${verifyBookmarks.length}개 책갈피 확인됨`);
                                 if (verifyBookmarks.length !== mergedBookmarks.length) {
                                     console.error(`[Bookmark] 저장 검증 실패! 예상: ${mergedBookmarks.length}개, 실제: ${verifyBookmarks.length}개`);
                                 } else {
@@ -1437,7 +1437,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
     console.log(`[Bookmark] v3.0 불러오기 완료 요약:`);
     console.log(`  - 처리된 캐릭터: ${processedCharacters}개`);
     console.log(`  - 처리된 채팅: ${processedChats}개`);
-    console.log(`  - 총 추가된 북마크: ${totalImported}개`);
+    console.log(`  - 총 추가된 책갈피: ${totalImported}개`);
     console.log(`  - 찾을 수 없는 캐릭터: ${notFoundCharacters.length}개 (${notFoundCharacters.join(', ')})`);
     
     return { 
@@ -1742,7 +1742,7 @@ function handleMessageUpdate() {
  * 채팅 변경 처리 - 새로운 채팅의 북마크를 로드
  */
 function handleChatChanged() {
-    console.log('[Bookmark] 채팅이 변경됨. 북마크를 새로 로드합니다.');
+    console.log('[Bookmark] 채팅이 변경됨. 책갈피를 새로 로드합니다.');
     
     // 새로운 채팅의 북마크를 로드
     loadBookmarks();
@@ -1751,7 +1751,7 @@ function handleChatChanged() {
     const context = getContext();
     if (context && context.characterId !== undefined && context.chatId !== undefined) {
         updateBookmarkIndex(context.characterId, context.chatId, bookmarks.length);
-        console.log(`[Bookmark] 채팅 변경 후 인덱스 동기화: 캐릭터 ${context.characterId}, 채팅 ${context.chatId}, 북마크 ${bookmarks.length}개`);
+        console.log(`[Bookmark] 채팅 변경 후 인덱스 동기화: 캐릭터 ${context.characterId}, 채팅 ${context.chatId}, 책갈피 ${bookmarks.length}개`);
     }
     
     // UI 업데이트
@@ -1783,15 +1783,15 @@ async function addToWandMenu() {
  * 확장 초기화
  */
 function initializeBookmarkManager() {
-    console.log('[Bookmark] === 북마크 매니저 초기화 시작 ===');
+    console.log('[Bookmark] === 책갈피 매니저 초기화 시작 ===');
     
     // Extension Settings 초기화
     initializeBookmarkIndex();
     console.log('[Bookmark] Extension Settings 초기화 완료');
     
-    // 북마크 데이터 로드
+    // 책갈피 데이터 로드
     loadBookmarks();
-    console.log(`[Bookmark] 북마크 데이터 로드 완료: ${bookmarks.length}개`);
+    console.log(`[Bookmark] 책갈피 데이터 로드 완료: ${bookmarks.length}개`);
     
     // 현재 채팅의 북마크 인덱스 동기화 (로드 후)
     const context = getContext();
@@ -1831,9 +1831,9 @@ function initializeBookmarkManager() {
     
     console.log('[Bookmark] 이벤트 리스너 등록 완료');
     
-    // 북마크 아이콘 클릭 이벤트
+    // 책갈피 아이콘 클릭 이벤트
     $(document).on('click', '.bookmark-icon', function(event) {
-        console.log('[Bookmark] 북마크 아이콘 클릭 이벤트 발생');
+        console.log('[Bookmark] 책갈피 아이콘 클릭 이벤트 발생');
         event.preventDefault();
         event.stopPropagation();
         
@@ -1850,7 +1850,7 @@ function initializeBookmarkManager() {
             const isBookmarked = bookmarks.some(bookmark => bookmark.messageId === parseInt(messageId));
             
             if (isBookmarked) {
-                console.log(`[Bookmark] 이미 북마크된 메시지 - 해제 확인 모달 표시`);
+                console.log(`[Bookmark] 이미 책갈피된 메시지 - 해제 확인 모달 표시`);
                 showBookmarkRemoveConfirm(messageId);
             } else {
                 console.log(`[Bookmark] createBookmarkModal(${messageId}) 호출`);
@@ -1869,6 +1869,6 @@ function initializeBookmarkManager() {
 
 // jQuery 준비 완료 시 초기화
 jQuery(() => {
-    console.log('[Bookmark] jQuery 준비 완료, 북마크 매니저 초기화 시작');
+    console.log('[Bookmark] jQuery 준비 완료, 책갈피 매니저 초기화 시작');
     initializeBookmarkManager();
 });
