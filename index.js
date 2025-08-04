@@ -33,7 +33,7 @@ const extensionFolderPath = `scripts/extensions/third-party/Bookmark`;
 
 // 메시지 버튼 HTML (북마크 아이콘)
 const messageButtonHtml = `
-    <div class="mes_button bookmark-icon interactable" title="북마크 추가" tabindex="0">
+    <div class="mes_button bookmark-icon interactable" title="책갈피 추가" tabindex="0">
         <i class="fa-solid fa-bookmark"></i>
     </div>
 `;
@@ -134,6 +134,35 @@ function highlightMessage(messageId) {
 }
 
 /**
+ * 북마크 해제 확인 모달
+ */
+async function showBookmarkRemoveConfirm(messageId) {
+    console.log(`[Bookmark] showBookmarkRemoveConfirm 함수 시작 - messageId: ${messageId}`);
+    
+    const bookmark = bookmarks.find(b => b.messageId === parseInt(messageId));
+    const bookmarkName = bookmark ? bookmark.name : `메시지 #${messageId}`;
+    
+    const result = await callGenericPopup(
+        `책갈피 "${bookmarkName}"를 삭제하시겠습니까?`,
+        POPUP_TYPE.CONFIRM
+    );
+    
+    console.log(`[Bookmark] 해제 확인 모달 결과: ${result}`);
+    
+    if (result === POPUP_RESULT.AFFIRMATIVE) {
+        // 북마크 삭제
+        const bookmarkIndex = bookmarks.findIndex(b => b.messageId === parseInt(messageId));
+        if (bookmarkIndex !== -1) {
+            const deletedBookmark = bookmarks.splice(bookmarkIndex, 1)[0];
+            saveBookmarks();
+            refreshBookmarkIcons();
+            toastr.success(`책갈피 "${deletedBookmark.name}"가 삭제되었습니다.`);
+            console.log(`[Bookmark] 북마크 삭제 완료: ${deletedBookmark.name}`);
+        }
+    }
+}
+
+/**
  * 북마크 추가 모달 생성
  */
 async function createBookmarkModal(messageId) {
@@ -142,13 +171,7 @@ async function createBookmarkModal(messageId) {
     const result = await callGenericPopup(
         `메시지 ID: ${messageId}`,
         POPUP_TYPE.INPUT,
-        '',
-        {
-            customButtons: [
-                { text: '북마크 추가', result: 1 },
-                { text: '취소', result: 0 }
-            ]
-        }
+        ''
     );
     
     console.log(`[Bookmark] 모달 결과: ${result}`);
@@ -165,7 +188,7 @@ async function createBookmarkModal(messageId) {
             refreshBookmarkIcons();
         }, 100);
         
-        toastr.success('북마크가 추가되었습니다.');
+        toastr.success('책갈피가 추가되었습니다.');
     } else {
         console.log('[Bookmark] 북마크 추가 취소됨');
     }
@@ -236,7 +259,7 @@ async function createBookmarkListModal() {
             <div class="bookmark-content" data-message-id="${bookmark.messageId}">
                 <div class="bookmark-id">#${bookmark.messageId}</div>
                 <div class="bookmark-name">${bookmark.name}</div>
-                <input type="text" class="bookmark-description-field text_pole" value="${bookmark.description || ''}" placeholder="북마크 설명을 입력하세요" data-bookmark-id="${bookmark.id}">
+                <input type="text" class="bookmark-description-field text_pole" value="${bookmark.description || ''}" placeholder="책갈피 설명을 입력하세요" data-bookmark-id="${bookmark.id}">
             </div>
             <div class="bookmark-actions">
                 <button class="bookmark-edit-btn" title="수정">
@@ -258,7 +281,7 @@ async function createBookmarkListModal() {
                 </div>
                 <div class="bookmark-modal-body">
                     ${bookmarks.length === 0 
-                        ? '<div class="no-bookmarks">저장된 북마크가 없습니다.</div>' 
+                        ? '<div class="no-bookmarks">저장된 책갈피가 없습니다.</div>' 
                         : `<div class="bookmark-list">${bookmarkList}</div>`
                     }
                 </div>
@@ -352,7 +375,7 @@ async function editBookmarkModal(bookmarkId) {
 
     // 북마크 이름 수정
     const nameResult = await callGenericPopup(
-        `북마크 이름 수정 (메시지 ID: ${bookmark.messageId})`,
+        `책갈피 이름 수정 (메시지 ID: ${bookmark.messageId})`,
         POPUP_TYPE.INPUT,
         bookmark.name
     );
@@ -365,14 +388,14 @@ async function editBookmarkModal(bookmarkId) {
 
     const newName = nameResult.trim();
     if (!newName) {
-        toastr.error('북마크 이름을 입력해주세요.');
+        toastr.error('책갈피 이름을 입력해주세요.');
         createBookmarkListModal();
         return;
     }
 
     // 설명 수정
     const descResult = await callGenericPopup(
-        '북마크 설명 수정 (선택사항)',
+        '책갈피 설명 수정 (선택사항)',
         POPUP_TYPE.INPUT,
         bookmark.description || ''
     );
@@ -381,11 +404,11 @@ async function editBookmarkModal(bookmarkId) {
         // 설명 수정을 취소해도 이름은 이미 입력했으므로 기존 설명 유지
         console.log('[Bookmark] 설명 수정 취소, 기존 설명 유지');
         editBookmark(bookmarkId, newName, bookmark.description);
-        toastr.success('북마크 이름이 수정되었습니다.');
+        toastr.success('책갈피 이름이 수정되었습니다.');
     } else {
         console.log(`[Bookmark] 북마크 수정 완료 - 이름: "${newName}", 설명: "${descResult}"`);
         editBookmark(bookmarkId, newName, descResult);
-        toastr.success('북마크가 수정되었습니다.');
+        toastr.success('책갈피가 수정되었습니다.');
     }
 
     // 목록 새로고침
@@ -402,7 +425,7 @@ async function editBookmarkNameOnly(bookmarkId) {
     console.log(`[Bookmark] 북마크 이름 수정 - ID: ${bookmarkId}`);
 
     const nameResult = await callGenericPopup(
-        `북마크 이름 수정 (메시지 ID: ${bookmark.messageId})`,
+        `책갈피 이름 수정 (메시지 ID: ${bookmark.messageId})`,
         POPUP_TYPE.INPUT,
         bookmark.name
     );
@@ -414,13 +437,13 @@ async function editBookmarkNameOnly(bookmarkId) {
 
     const newName = nameResult.trim();
     if (!newName) {
-        toastr.error('북마크 이름을 입력해주세요.');
+        toastr.error('책갈피 이름을 입력해주세요.');
         return;
     }
 
     // 이름만 수정 (설명은 그대로 유지)
     editBookmark(bookmarkId, newName, bookmark.description);
-    toastr.success('북마크 이름이 수정되었습니다.');
+    toastr.success('책갈피 이름이 수정되었습니다.');
 
     // 목록 새로고침
     setTimeout(() => createBookmarkListModal(), 100);
@@ -434,7 +457,7 @@ async function confirmDeleteBookmark(bookmarkId) {
     if (!bookmark) return;
 
     const result = await callGenericPopup(
-        `"${bookmark.name}" 북마크를 삭제하시겠습니까?`,
+        `"${bookmark.name}" 책갈피를 삭제하시겠습니까?`,
         POPUP_TYPE.CONFIRM
     );
 
@@ -446,7 +469,7 @@ async function confirmDeleteBookmark(bookmarkId) {
             refreshBookmarkIcons();
         }, 100);
         
-        toastr.success('북마크가 삭제되었습니다.');
+        toastr.success('책갈피가 삭제되었습니다.');
         
         // 목록 모달 새로고침
         closeBookmarkModal();
@@ -591,8 +614,16 @@ function initializeBookmarkManager() {
         console.log(`[Bookmark] 메시지 ID: ${messageId}`);
         
         if (messageId !== undefined) {
-            console.log(`[Bookmark] createBookmarkModal(${messageId}) 호출`);
-            createBookmarkModal(messageId);
+            // 이미 북마크된 메시지인지 확인
+            const isBookmarked = bookmarks.some(bookmark => bookmark.messageId === parseInt(messageId));
+            
+            if (isBookmarked) {
+                console.log(`[Bookmark] 이미 북마크된 메시지 - 해제 확인 모달 표시`);
+                showBookmarkRemoveConfirm(messageId);
+            } else {
+                console.log(`[Bookmark] createBookmarkModal(${messageId}) 호출`);
+                createBookmarkModal(messageId);
+            }
         } else {
             console.error('[Bookmark] 메시지 ID를 찾을 수 없습니다');
         }
