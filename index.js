@@ -145,19 +145,6 @@ async function deleteAllBookmarksFromAllCharacters() {
             return;
         }
         
-        // 인덱스 요약 정보 표시
-        const summary = getBookmarkIndexSummary();
-        
-        // 두 번째 확인: 구체적인 삭제 대상 정보 제공
-        const secondConfirm = await callGenericPopup(
-            `삭제될 데이터:\n• ${summary.totalCharacters}개 캐릭터\n• ${summary.totalChats}개 채팅\n• ${summary.totalBookmarks}개 책갈피\n\n⚠️ 이 작업은 되돌릴 수 없습니다!\n데이터를 먼저 백업하는 것을 강력히 권장합니다.\n\n정말로 모든 책갈피를 삭제하시겠습니까?`,
-            POPUP_TYPE.CONFIRM
-        );
-        
-        if (secondConfirm !== POPUP_RESULT.AFFIRMATIVE) {
-            return;
-        }
-        
         // 삭제 진행
         toastr.info('모든 캐릭터의 책갈피를 삭제하고 있습니다...');
         
