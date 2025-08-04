@@ -172,6 +172,25 @@ async function deleteAllBookmarksFromAllCharacters() {
         let deletedChats = 0;
         let totalErrors = 0;
         
+        // 먼저 현재 채팅의 책갈피를 즉시 삭제하고 모달 업데이트
+        let currentChatProcessed = false;
+        if (context.characterId !== undefined && context.chatId !== undefined) {
+            const currentCharacterKey = context.characterId.toString();
+            const currentChatKey = context.chatId.toString();
+            
+            // 현재 채팅에 책갈피가 있는지 확인
+            if (bookmarkIndex[currentCharacterKey] && bookmarkIndex[currentCharacterKey][currentChatKey]) {
+                bookmarks.length = 0; // 메모리에서 즉시 삭제
+                saveBookmarks(); // 인덱스도 자동으로 업데이트됨
+                deletedChats++;
+                currentChatProcessed = true;
+                
+                // 현재 채팅 삭제 후 즉시 모달 업데이트
+                refreshBookmarkListInModal();
+                toastr.info('현재 채팅의 책갈피가 삭제되었습니다. 다른 채팅들을 처리하고 있습니다...');
+            }
+        }
+        
         // 인덱스에 있는 모든 캐릭터의 북마크 삭제
         for (const [characterIdStr, characterChats] of Object.entries(bookmarkIndex)) {
             const charIndex = parseInt(characterIdStr);
@@ -183,7 +202,12 @@ async function deleteAllBookmarksFromAllCharacters() {
             
             for (const [chatId] of Object.entries(characterChats)) {
                 try {
-                    // 현재 캐릭터의 현재 채팅인 경우
+                    // 현재 캐릭터의 현재 채팅인 경우 (이미 처리되었으면 건너뛰기)
+                    if (charIndex === context.characterId && chatId === context.chatId && currentChatProcessed) {
+                        continue; // 이미 처리했으므로 건너뛰기
+                    }
+                    
+                    // 현재 채팅이지만 위에서 처리되지 않은 경우 (안전장치)
                     if (charIndex === context.characterId && chatId === context.chatId) {
                         // 메모리에서 삭제
                         bookmarks.length = 0;
