@@ -97,113 +97,38 @@ function scrollToMessage(messageId) {
 async function createBookmarkModal(messageId) {
     console.log(`[Bookmark] createBookmarkModal 함수 시작 - messageId: ${messageId}`);
     
-    const modalHtml = `
-        <div class="bookmark-modal-backdrop">
-            <div class="bookmark-modal">
-                <div class="bookmark-modal-header">
-                    <h3>북마크 추가</h3>
-                    <button class="bookmark-modal-close" title="닫기">×</button>
-                </div>
-                <div class="bookmark-modal-body">
-                    <div class="form-group">
-                        <label for="bookmark-name">북마크 이름:</label>
-                        <input type="text" id="bookmark-name" class="text_pole" placeholder="북마크 이름을 입력하세요">
-                    </div>
-                    <div class="form-group">
-                        <label for="bookmark-description">설명:</label>
-                        <textarea id="bookmark-description" class="text_pole" rows="3" placeholder="북마크 설명을 입력하세요"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>메시지 ID: ${messageId}</label>
-                    </div>
-                </div>
-                <div class="bookmark-modal-footer">
-                    <button class="bookmark-confirm-btn menu_button">확인</button>
-                    <button class="bookmark-cancel-btn menu_button">취소</button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 기존 모달 제거
-    if (currentModal) {
-        console.log('[Bookmark] 기존 모달 제거');
-        currentModal.remove();
-    }
-
-    console.log('[Bookmark] 새 모달 HTML 생성 완료');
-    currentModal = $(modalHtml);
-    console.log('[Bookmark] 모달 DOM 요소 생성:', currentModal[0]);
-    
-    $('body').append(currentModal);
-    console.log('[Bookmark] 모달을 body에 추가 완료');
-
-    // 애니메이션 효과
-    setTimeout(() => {
-        console.log('[Bookmark] 모달 애니메이션 시작');
-        currentModal.addClass('visible');
-        currentModal.find('.bookmark-modal').addClass('visible');
-        console.log('[Bookmark] 모달 표시 완료');
-    }, 10);
-
-    // 이벤트 핸들러
-    console.log('[Bookmark] 모달 이벤트 핸들러 등록 시작');
-    currentModal.find('.bookmark-modal-close, .bookmark-cancel-btn').on('click', closeBookmarkModal);
-    
-    currentModal.find('.bookmark-confirm-btn').on('click', function() {
-        console.log('[Bookmark] 확인 버튼 클릭됨');
-        const name = $('#bookmark-name').val().trim();
-        const description = $('#bookmark-description').val().trim();
-        
-        console.log(`[Bookmark] 입력값 - 이름: "${name}", 설명: "${description}"`);
-        
-        if (!name) {
-            console.log('[Bookmark] 북마크 이름이 비어있음');
-            toastr.error('북마크 이름을 입력해주세요.');
-            return;
+    const result = await callGenericPopup(
+        `메시지 ID: ${messageId}`,
+        POPUP_TYPE.INPUT,
+        '',
+        {
+            customButtons: [
+                { text: '북마크 추가', result: 1 },
+                { text: '취소', result: 0 }
+            ]
         }
-
-        // 북마크 추가
-        console.log(`[Bookmark] 북마크 추가 시작 - messageId: ${messageId}`);
-        addBookmark(messageId, name, description);
-        closeBookmarkModal();
+    );
+    
+    console.log(`[Bookmark] 모달 결과: ${result}`);
+    
+    if (result && result.trim()) {
+        const bookmarkName = result.trim();
+        console.log(`[Bookmark] 북마크 추가 - 이름: "${bookmarkName}"`);
+        
+        // 북마크 추가 (설명은 빈 문자열로)
+        addBookmark(messageId, bookmarkName, '');
         toastr.success('북마크가 추가되었습니다.');
-    });
-    
-    console.log('[Bookmark] 모달 이벤트 핸들러 등록 완료');
-
-    // 엔터키로 확인
-    currentModal.find('input, textarea').on('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            currentModal.find('.bookmark-confirm-btn').click();
-        }
-    });
-
-    // 첫 번째 입력 필드에 포커스
-    setTimeout(() => {
-        $('#bookmark-name').focus();
-    }, 100);
+    } else {
+        console.log('[Bookmark] 북마크 추가 취소됨');
+    }
 }
 
 /**
- * 북마크 모달 닫기
+ * 북마크 모달 닫기 (더 이상 사용하지 않음)
  */
 function closeBookmarkModal() {
-    console.log('[Bookmark] 모달 닫기 시작');
-    if (currentModal) {
-        console.log('[Bookmark] 모달 애니메이션 제거 시작');
-        currentModal.removeClass('visible');
-        currentModal.find('.bookmark-modal').removeClass('visible');
-        
-        setTimeout(() => {
-            console.log('[Bookmark] 모달 DOM에서 제거');
-            currentModal.remove();
-            currentModal = null;
-        }, 300);
-    } else {
-        console.log('[Bookmark] 닫을 모달이 없음');
-    }
+    // SillyTavern 기본 모달 사용으로 인해 더 이상 필요 없음
+    console.log('[Bookmark] closeBookmarkModal 호출됨 (deprecated)');
 }
 
 /**
@@ -344,73 +269,48 @@ async function editBookmarkModal(bookmarkId) {
     const bookmark = bookmarks.find(b => b.id === bookmarkId);
     if (!bookmark) return;
 
-    const modalHtml = `
-        <div class="bookmark-modal-backdrop">
-            <div class="bookmark-modal">
-                <div class="bookmark-modal-header">
-                    <h3>북마크 수정</h3>
-                    <button class="bookmark-modal-close" title="닫기">×</button>
-                </div>
-                <div class="bookmark-modal-body">
-                    <div class="form-group">
-                        <label for="edit-bookmark-name">북마크 이름:</label>
-                        <input type="text" id="edit-bookmark-name" class="text_pole" value="${bookmark.name}">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-bookmark-description">설명:</label>
-                        <textarea id="edit-bookmark-description" class="text_pole" rows="3">${bookmark.description}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>메시지 ID: ${bookmark.messageId}</label>
-                    </div>
-                </div>
-                <div class="bookmark-modal-footer">
-                    <button class="bookmark-confirm-btn menu_button">저장</button>
-                    <button class="bookmark-cancel-btn menu_button">취소</button>
-                </div>
-            </div>
-        </div>
-    `;
+    console.log(`[Bookmark] 북마크 수정 모달 - ID: ${bookmarkId}`);
 
-    // 기존 모달 제거
-    if (currentModal) {
-        currentModal.remove();
+    // 북마크 이름 수정
+    const nameResult = await callGenericPopup(
+        `북마크 이름 수정 (메시지 ID: ${bookmark.messageId})`,
+        POPUP_TYPE.INPUT,
+        bookmark.name
+    );
+
+    if (nameResult === false || nameResult === null) {
+        console.log('[Bookmark] 북마크 이름 수정 취소됨');
+        createBookmarkListModal(); // 목록으로 돌아가기
+        return;
     }
 
-    currentModal = $(modalHtml);
-    $('body').append(currentModal);
+    const newName = nameResult.trim();
+    if (!newName) {
+        toastr.error('북마크 이름을 입력해주세요.');
+        createBookmarkListModal();
+        return;
+    }
 
-    // 애니메이션 효과
-    setTimeout(() => {
-        currentModal.addClass('visible');
-        currentModal.find('.bookmark-modal').addClass('visible');
-    }, 10);
+    // 설명 수정
+    const descResult = await callGenericPopup(
+        '북마크 설명 수정 (선택사항)',
+        POPUP_TYPE.INPUT,
+        bookmark.description || ''
+    );
 
-    // 이벤트 핸들러
-    currentModal.find('.bookmark-modal-close, .bookmark-cancel-btn').on('click', () => {
-        closeBookmarkModal();
-        setTimeout(() => createBookmarkListModal(), 100);
-    });
-    
-    currentModal.find('.bookmark-confirm-btn').on('click', function() {
-        const name = $('#edit-bookmark-name').val().trim();
-        const description = $('#edit-bookmark-description').val().trim();
-        
-        if (!name) {
-            toastr.error('북마크 이름을 입력해주세요.');
-            return;
-        }
-
-        editBookmark(bookmarkId, name, description);
-        closeBookmarkModal();
+    if (descResult === false || descResult === null) {
+        // 설명 수정을 취소해도 이름은 이미 입력했으므로 기존 설명 유지
+        console.log('[Bookmark] 설명 수정 취소, 기존 설명 유지');
+        editBookmark(bookmarkId, newName, bookmark.description);
+        toastr.success('북마크 이름이 수정되었습니다.');
+    } else {
+        console.log(`[Bookmark] 북마크 수정 완료 - 이름: "${newName}", 설명: "${descResult}"`);
+        editBookmark(bookmarkId, newName, descResult);
         toastr.success('북마크가 수정되었습니다.');
-        setTimeout(() => createBookmarkListModal(), 100);
-    });
+    }
 
-    // 첫 번째 입력 필드에 포커스
-    setTimeout(() => {
-        $('#edit-bookmark-name').focus();
-    }, 100);
+    // 목록 새로고침
+    setTimeout(() => createBookmarkListModal(), 100);
 }
 
 /**
