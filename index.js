@@ -31,6 +31,12 @@ import {
 const pluginName = 'bookmark-manager';
 const extensionFolderPath = `scripts/extensions/third-party/Bookmark`;
 
+// 채팅별 북마크 저장을 위한 메타데이터 키
+const BOOKMARK_METADATA_KEY = 'bookmarks_v2';
+
+// 마이그레이션 완료 플래그 키
+const MIGRATION_COMPLETED_KEY = 'bookmark_migration_completed';
+
 // 메시지 버튼 HTML (북마크 아이콘)
 const messageButtonHtml = `
     <div class="mes_button bookmark-icon interactable" title="책갈피 추가" tabindex="0">
@@ -45,13 +51,76 @@ let bookmarks = [];
 let currentModal = null;
 
 /**
- * 로컬 스토리지에서 북마크 로드
+ * 기존 localStorage의 북마크를 현재 채팅으로 마이그레이션
+ */
+function migrateOldBookmarks() {
+    try {
+        // 마이그레이션이 이미 완료되었는지 확인
+        const migrationCompleted = localStorage.getItem(MIGRATION_COMPLETED_KEY);
+        if (migrationCompleted === 'true') {
+            return; // 이미 마이그레이션 완료됨
+        }
+
+        // 기존 localStorage에서 북마크 가져오기
+        const oldBookmarks = localStorage.getItem('st_bookmarks');
+        if (!oldBookmarks) {
+            // 기존 북마크가 없으므로 마이그레이션 완료로 표시
+            localStorage.setItem(MIGRATION_COMPLETED_KEY, 'true');
+            return;
+        }
+
+        const parsedOldBookmarks = JSON.parse(oldBookmarks);
+        if (!Array.isArray(parsedOldBookmarks) || parsedOldBookmarks.length === 0) {
+            localStorage.setItem(MIGRATION_COMPLETED_KEY, 'true');
+            return;
+        }
+
+        console.log(`[Bookmark] 기존 북마크 ${parsedOldBookmarks.length}개를 현재 채팅으로 마이그레이션합니다.`);
+
+        const context = getContext();
+        if (context && context.chatMetadata) {
+            // 현재 채팅에 기존 북마크가 없는 경우에만 마이그레이션
+            const existingBookmarks = context.chatMetadata[BOOKMARK_METADATA_KEY];
+            if (!existingBookmarks || !Array.isArray(existingBookmarks) || existingBookmarks.length === 0) {
+                context.chatMetadata[BOOKMARK_METADATA_KEY] = [...parsedOldBookmarks];
+                saveMetadataDebounced();
+                console.log('[Bookmark] 기존 북마크를 현재 채팅으로 마이그레이션 완료');
+            }
+        }
+
+        // 마이그레이션 완료 플래그 설정
+        localStorage.setItem(MIGRATION_COMPLETED_KEY, 'true');
+        
+        // 기존 localStorage 북마크는 유지 (다른 채팅에서도 볼 수 있도록)
+        // localStorage.removeItem('st_bookmarks'); // 이 줄은 주석 처리해서 백업으로 유지
+        
+    } catch (error) {
+        console.error('[Bookmark] 마이그레이션 중 오류 발생:', error);
+    }
+}
+
+/**
+ * 현재 채팅의 메타데이터에서 북마크 로드
  */
 function loadBookmarks() {
     try {
-        const savedBookmarks = localStorage.getItem('st_bookmarks');
-        if (savedBookmarks) {
-            bookmarks = JSON.parse(savedBookmarks);
+        const context = getContext();
+        if (!context || !context.chatMetadata) {
+            console.log('[Bookmark] 컨텍스트 또는 메타데이터를 찾을 수 없음. 빈 배열로 초기화.');
+            bookmarks = [];
+            return;
+        }
+
+        // 기존 북마크 마이그레이션 시도 (한 번만 실행됨)
+        migrateOldBookmarks();
+
+        const savedBookmarks = context.chatMetadata[BOOKMARK_METADATA_KEY];
+        if (savedBookmarks && Array.isArray(savedBookmarks)) {
+            bookmarks = savedBookmarks;
+            console.log(`[Bookmark] 현재 채팅에서 ${bookmarks.length}개의 북마크를 로드했습니다.`);
+        } else {
+            bookmarks = [];
+            console.log('[Bookmark] 현재 채팅에 저장된 북마크가 없습니다. 빈 배열로 초기화.');
         }
     } catch (error) {
         console.error('북마크 로드 실패:', error);
@@ -60,11 +129,23 @@ function loadBookmarks() {
 }
 
 /**
- * 로컬 스토리지에 북마크 저장
+ * 현재 채팅의 메타데이터에 북마크 저장
  */
 function saveBookmarks() {
     try {
-        localStorage.setItem('st_bookmarks', JSON.stringify(bookmarks));
+        const context = getContext();
+        if (!context || !context.chatMetadata) {
+            console.error('[Bookmark] 컨텍스트 또는 메타데이터를 찾을 수 없어 북마크를 저장할 수 없습니다.');
+            return;
+        }
+
+        // 메타데이터에 북마크 저장
+        context.chatMetadata[BOOKMARK_METADATA_KEY] = [...bookmarks];
+        
+        // 메타데이터 변경사항 저장
+        saveMetadataDebounced();
+        
+        console.log(`[Bookmark] 현재 채팅에 ${bookmarks.length}개의 북마크를 저장했습니다.`);
     } catch (error) {
         console.error('북마크 저장 실패:', error);
     }
@@ -668,6 +749,21 @@ function handleMessageUpdate() {
 }
 
 /**
+ * 채팅 변경 처리 - 새로운 채팅의 북마크를 로드
+ */
+function handleChatChanged() {
+    console.log('[Bookmark] 채팅이 변경됨. 북마크를 새로 로드합니다.');
+    
+    // 새로운 채팅의 북마크를 로드
+    loadBookmarks();
+    
+    // UI 업데이트
+    setTimeout(() => {
+        addBookmarkIconsToMessages();
+    }, 150);
+}
+
+/**
  * 요술봉 메뉴에 버튼 추가
  */
 async function addToWandMenu() {
@@ -704,7 +800,7 @@ function initializeBookmarkManager() {
     eventSource.on(event_types.MESSAGE_SENT, handleNewMessage);
     eventSource.on(event_types.MESSAGE_SWIPED, handleMessageUpdate);
     eventSource.on(event_types.MESSAGE_UPDATED, handleMessageUpdate);
-    eventSource.on(event_types.CHAT_CHANGED, handleMessageUpdate);
+    eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
     
     // 추가 메시지 로딩 시 처리 (핵심 기능)
     eventSource.on(event_types.MORE_MESSAGES_LOADED, () => {
