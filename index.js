@@ -154,23 +154,11 @@ async function deleteAllBookmarksFromAllCharacters() {
         
         // 두 번째 확인: 구체적인 삭제 대상 정보 제공
         const secondConfirm = await callGenericPopup(
-            `삭제될 데이터:\n• ${summary.totalCharacters}개 캐릭터\n• ${summary.totalChats}개 채팅\n• ${summary.totalBookmarks}개 책갈피\n\n데이터를 먼저 백업하는 것을 강력히 권장합니다.\n\n정말로 모든 책갈피를 삭제하시겠습니까?`,
+            `삭제될 데이터:\n• ${summary.totalCharacters}개 캐릭터\n• ${summary.totalChats}개 채팅\n• ${summary.totalBookmarks}개 책갈피\n\n⚠️ 이 작업은 되돌릴 수 없습니다!\n데이터를 먼저 백업하는 것을 강력히 권장합니다.\n\n정말로 모든 책갈피를 삭제하시겠습니까?`,
             POPUP_TYPE.CONFIRM
         );
         
         if (secondConfirm !== POPUP_RESULT.AFFIRMATIVE) {
-            return;
-        }
-        
-        // 세 번째 확인: 텍스트 입력으로 최종 확인
-        const finalConfirm = await callGenericPopup(
-            '최종 확인을 위해 "모든 책갈피 삭제"를 정확히 입력해주세요:',
-            POPUP_TYPE.INPUT,
-            ''
-        );
-        
-        if (finalConfirm !== '모든 책갈피 삭제') {
-            toastr.warning('입력이 정확하지 않아 삭제가 취소되었습니다.');
             return;
         }
         
@@ -304,7 +292,7 @@ async function deleteAllBookmarksFromAllCharacters() {
         console.log(`[Bookmark] 전체 삭제 완료 - 캐릭터: ${deletedCharacters}, 채팅: ${deletedChats}, 오류: ${totalErrors}`);
         
         // 모달 새로고침
-        setTimeout(() => createBookmarkListModal(), 100);
+        refreshBookmarkListInModal();
         
     } catch (error) {
         console.error('[Bookmark] 전체 삭제 중 오류:', error);
@@ -515,6 +503,7 @@ async function showBookmarkRemoveConfirm(messageId) {
             const deletedBookmark = bookmarks.splice(bookmarkIndex, 1)[0];
             saveBookmarks();
             refreshBookmarkIcons();
+            refreshBookmarkListInModal(); // 모달이 열려있으면 새로고침
             toastr.success(`책갈피 "${deletedBookmark.name}"가 삭제되었습니다.`);
             console.log(`[Bookmark] 북마크 삭제 완료: ${deletedBookmark.name}`);
         }
@@ -545,6 +534,7 @@ async function createBookmarkModal(messageId) {
         // 북마크 상태 새로고침
         setTimeout(() => {
             refreshBookmarkIcons();
+            refreshBookmarkListInModal(); // 모달이 열려있으면 새로고침
         }, 100);
         
         toastr.success('책갈피가 추가되었습니다.');
@@ -607,6 +597,129 @@ function deleteBookmark(bookmarkId) {
         bookmarks.splice(index, 1);
         saveBookmarks(); // 이 함수에서 인덱스도 자동으로 업데이트됨
     }
+}
+
+/**
+ * 현재 모달의 북마크 리스트만 새로고침
+ */
+function refreshBookmarkListInModal() {
+    if (!currentModal || currentModal.length === 0) {
+        return; // 모달이 열려있지 않으면 아무것도 하지 않음
+    }
+    
+    console.log('[Bookmark] 모달 내 북마크 리스트 새로고침');
+    
+    // 새로운 북마크 리스트 HTML 생성
+    const bookmarkList = bookmarks.map(bookmark => `
+        <div class="bookmark-item" data-bookmark-id="${bookmark.id}">
+            <div class="bookmark-content" data-message-id="${bookmark.messageId}">
+                <div class="bookmark-id">#${bookmark.messageId}</div>
+                <div class="bookmark-name">${bookmark.name}</div>
+                <input type="text" class="bookmark-description-field text_pole" value="${bookmark.description || ''}" placeholder="책갈피 설명을 입력하세요" data-bookmark-id="${bookmark.id}">
+            </div>
+            <div class="bookmark-actions">
+                <button class="bookmark-edit-btn" title="수정">
+                    <i class="fa-solid fa-pencil"></i>
+                </button>
+                <button class="bookmark-delete-btn" title="삭제">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    // 모달 바디 업데이트
+    const modalBody = currentModal.find('.bookmark-modal-body');
+    const dataControls = modalBody.find('.bookmark-data-controls');
+    
+    if (bookmarks.length === 0) {
+        modalBody.html(`
+            ${dataControls[0].outerHTML}
+            <div class="no-bookmarks">저장된 책갈피가 없습니다.</div>
+        `);
+    } else {
+        modalBody.html(`
+            ${dataControls[0].outerHTML}
+            <div class="bookmark-list">${bookmarkList}</div>
+        `);
+    }
+    
+    // 이벤트 핸들러 다시 바인딩
+    bindModalEventHandlers();
+}
+
+/**
+ * 모달 이벤트 핸들러 바인딩
+ */
+function bindModalEventHandlers() {
+    if (!currentModal) return;
+    
+    // 북마크 클릭으로 메시지 이동
+    currentModal.find('.bookmark-content').off('click').on('click', function() {
+        const messageId = $(this).data('message-id');
+        
+        // 모달 닫기
+        currentModal.removeClass('visible');
+        currentModal.find('.bookmark-list-modal').removeClass('visible');
+        
+        setTimeout(() => {
+            currentModal.remove();
+            currentModal = null;
+            
+            // 메시지로 이동
+            jumpToMessage(messageId);
+        }, 300);
+    });
+
+    // 설명 필드 변경 이벤트
+    currentModal.find('.bookmark-description-field').off('blur').on('blur', function() {
+        const bookmarkId = $(this).data('bookmark-id');
+        const newDescription = $(this).val().trim();
+        const bookmark = bookmarks.find(b => b.id === bookmarkId);
+        
+        if (bookmark && bookmark.description !== newDescription) {
+            bookmark.description = newDescription;
+            saveBookmarks();
+            console.log(`[Bookmark] 설명 자동 저장 - ID: ${bookmarkId}`);
+        }
+    });
+
+    // 설명 필드 클릭 시 이동 방지
+    currentModal.find('.bookmark-description-field').off('click').on('click', function(e) {
+        e.stopPropagation();
+    });
+
+    // 데이터 불러오기 버튼 이벤트
+    currentModal.find('.bookmark-import-btn').off('click').on('click', function(e) {
+        e.stopPropagation();
+        importBookmarkData();
+    });
+
+    // 데이터 내보내기 버튼 이벤트
+    currentModal.find('.bookmark-export-btn').off('click').on('click', function(e) {
+        e.stopPropagation();
+        exportBookmarkData();
+    });
+
+    // 전체 삭제 버튼 이벤트
+    currentModal.find('.bookmark-delete-all-btn').off('click').on('click', function(e) {
+        e.stopPropagation();
+        deleteAllBookmarksFromAllCharacters();
+    });
+
+    // 수정 버튼 (이름만 수정)
+    currentModal.find('.bookmark-edit-btn').off('click').on('click', function(e) {
+        e.stopPropagation();
+        const bookmarkId = $(this).closest('.bookmark-item').data('bookmark-id');
+        editBookmarkNameOnly(bookmarkId);
+    });
+
+    // 삭제 버튼
+    currentModal.find('.bookmark-delete-btn').off('click').on('click', function(e) {
+        e.stopPropagation();
+        const bookmarkId = $(this).closest('.bookmark-item').data('bookmark-id');
+        confirmDeleteBookmark(bookmarkId);
+    });
 }
 
 /**
@@ -687,72 +800,8 @@ async function createBookmarkListModal() {
         }, 300);
     });
     
-    // 북마크 클릭으로 메시지 이동
-    currentModal.find('.bookmark-content').on('click', function() {
-        const messageId = $(this).data('message-id');
-        
-        // 모달 닫기
-        currentModal.removeClass('visible');
-        currentModal.find('.bookmark-list-modal').removeClass('visible');
-        
-        setTimeout(() => {
-            currentModal.remove();
-            currentModal = null;
-            
-            // 메시지로 이동
-            jumpToMessage(messageId);
-        }, 300);
-    });
-
-    // 설명 필드 변경 이벤트
-    currentModal.find('.bookmark-description-field').on('blur', function() {
-        const bookmarkId = $(this).data('bookmark-id');
-        const newDescription = $(this).val().trim();
-        const bookmark = bookmarks.find(b => b.id === bookmarkId);
-        
-        if (bookmark && bookmark.description !== newDescription) {
-            bookmark.description = newDescription;
-            saveBookmarks();
-            console.log(`[Bookmark] 설명 자동 저장 - ID: ${bookmarkId}`);
-        }
-    });
-
-    // 설명 필드 클릭 시 이동 방지
-    currentModal.find('.bookmark-description-field').on('click', function(e) {
-        e.stopPropagation();
-    });
-
-    // 데이터 불러오기 버튼 이벤트
-    currentModal.find('.bookmark-import-btn').on('click', function(e) {
-        e.stopPropagation();
-        importBookmarkData();
-    });
-
-    // 데이터 내보내기 버튼 이벤트
-    currentModal.find('.bookmark-export-btn').on('click', function(e) {
-        e.stopPropagation();
-        exportBookmarkData();
-    });
-
-    // 전체 삭제 버튼 이벤트
-    currentModal.find('.bookmark-delete-all-btn').on('click', function(e) {
-        e.stopPropagation();
-        deleteAllBookmarksFromAllCharacters();
-    });
-
-    // 수정 버튼 (이름만 수정)
-    currentModal.find('.bookmark-edit-btn').on('click', function(e) {
-        e.stopPropagation();
-        const bookmarkId = $(this).closest('.bookmark-item').data('bookmark-id');
-        editBookmarkNameOnly(bookmarkId);
-    });
-
-    // 삭제 버튼
-    currentModal.find('.bookmark-delete-btn').on('click', function(e) {
-        e.stopPropagation();
-        const bookmarkId = $(this).closest('.bookmark-item').data('bookmark-id');
-        confirmDeleteBookmark(bookmarkId);
-    });
+    // 모든 이벤트 핸들러 바인딩
+    bindModalEventHandlers();
 }
 
 /**
@@ -803,7 +852,7 @@ async function editBookmarkModal(bookmarkId) {
     }
 
     // 목록 새로고침
-    setTimeout(() => createBookmarkListModal(), 100);
+    refreshBookmarkListInModal();
 }
 
 /**
@@ -837,7 +886,7 @@ async function editBookmarkNameOnly(bookmarkId) {
     toastr.success('책갈피 이름이 수정되었습니다.');
 
     // 목록 새로고침
-    setTimeout(() => createBookmarkListModal(), 100);
+    refreshBookmarkListInModal();
 }
 
 /**
@@ -863,8 +912,7 @@ async function confirmDeleteBookmark(bookmarkId) {
         toastr.success('책갈피가 삭제되었습니다.');
         
         // 목록 모달 새로고침
-        closeBookmarkModal();
-        setTimeout(() => createBookmarkListModal(), 100);
+        refreshBookmarkListInModal();
     }
 }
 
@@ -1043,164 +1091,9 @@ async function collectAllBookmarksFromAllCharacters() {
     }
 }
 
-/**
- * 현재 캐릭터의 모든 채팅에서 북마크 데이터 수집
- */
-async function collectAllBookmarksFromChats() {
-    const context = getContext();
-    const allBookmarks = [];
-    
-    try {
-        if (!context || !context.characters || context.characterId === undefined) {
-            console.warn('[Bookmark] 캐릭터 정보를 찾을 수 없어 현재 채팅 북마크만 수집합니다.');
-            return [{ 
-                chatName: '현재 채팅', 
-                fileName: 'current', 
-                bookmarks: [...bookmarks] 
-            }];
-        }
 
-        const currentCharacter = context.characters[context.characterId];
-        if (!currentCharacter) {
-            console.warn('[Bookmark] 현재 캐릭터 정보를 찾을 수 없습니다.');
-            return [{ 
-                chatName: '현재 채팅', 
-                fileName: 'current', 
-                bookmarks: [...bookmarks] 
-            }];
-        }
 
-        console.log(`[Bookmark] ${currentCharacter.name}의 모든 채팅에서 북마크를 수집합니다...`);
 
-        // 현재 캐릭터의 모든 채팅 목록 가져오기
-        const requestBody = { avatar_url: currentCharacter.avatar };
-        const response = await fetch('/api/characters/chats', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            throw new Error(`채팅 목록 가져오기 실패: ${response.status}`);
-        }
-
-        const chatList = await response.json();
-        console.log(`[Bookmark] 총 ${chatList.length}개의 채팅을 발견했습니다.`);
-
-        // 각 채팅의 메타데이터에서 북마크 수집
-        for (const chatInfo of chatList) {
-            try {
-                const chatFileName = chatInfo.file_name || chatInfo.fileName;
-                if (!chatFileName) continue;
-
-                // 현재 채팅인 경우 메모리의 북마크 사용
-                if (chatFileName === context.chatId) {
-                    allBookmarks.push({
-                        chatName: chatInfo.chat_name || chatInfo.name || chatFileName,
-                        fileName: chatFileName,
-                        bookmarks: [...bookmarks],
-                        isCurrent: true
-                    });
-                    continue;
-                }
-
-                // 다른 채팅의 메타데이터 가져오기
-                const chatRequestBody = {
-                    ch_name: currentCharacter.name,
-                    file_name: chatFileName.replace('.jsonl', ''),
-                    avatar_url: currentCharacter.avatar
-                };
-
-                const chatResponse = await fetch('/api/chats/get', {
-                    method: 'POST',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify(chatRequestBody)
-                });
-
-                if (!chatResponse.ok) {
-                    console.warn(`[Bookmark] 채팅 ${chatFileName} 데이터 가져오기 실패`);
-                    continue;
-                }
-
-                const chatData = await chatResponse.json();
-                let chatMetadata = null;
-
-                // 메타데이터 추출
-                if (Array.isArray(chatData) && chatData.length > 0) {
-                    const firstItem = chatData[0];
-                    if (typeof firstItem === 'object' && firstItem !== null && !Array.isArray(firstItem)) {
-                        chatMetadata = firstItem.chat_metadata || firstItem;
-                    }
-                }
-
-                // 북마크 추출
-                const chatBookmarks = chatMetadata && chatMetadata[BOOKMARK_METADATA_KEY] 
-                    ? chatMetadata[BOOKMARK_METADATA_KEY] 
-                    : [];
-
-                if (Array.isArray(chatBookmarks) && chatBookmarks.length > 0) {
-                    allBookmarks.push({
-                        chatName: chatInfo.chat_name || chatInfo.name || chatFileName,
-                        fileName: chatFileName,
-                        bookmarks: chatBookmarks
-                    });
-                }
-
-            } catch (error) {
-                console.error(`[Bookmark] 채팅 ${chatInfo.file_name || 'unknown'} 처리 중 오류:`, error);
-            }
-        }
-
-        console.log(`[Bookmark] 총 ${allBookmarks.length}개 채팅에서 북마크를 수집했습니다.`);
-        return allBookmarks;
-
-    } catch (error) {
-        console.error('[Bookmark] 모든 채팅 북마크 수집 중 오류:', error);
-        // 오류 발생 시 현재 채팅 북마크만 반환
-        return [{ 
-            chatName: '현재 채팅', 
-            fileName: 'current', 
-            bookmarks: [...bookmarks] 
-        }];
-    }
-}
-
-/**
- * 현재 캐릭터의 모든 채팅 북마크 내보내기
- */
-async function exportCurrentCharacterBookmarks() {
-    try {
-        toastr.info('현재 캐릭터의 모든 채팅에서 책갈피를 수집하고 있습니다...');
-        
-        const allChatBookmarks = await collectAllBookmarksFromChats();
-        
-        // 전체 북마크 수 계산
-        const totalBookmarks = allChatBookmarks.reduce((total, chat) => total + chat.bookmarks.length, 0);
-        
-        const exportData = {
-            version: '2.0',
-            exportDate: new Date().toISOString(),
-            scope: 'current_character',
-            totalChats: allChatBookmarks.length,
-            totalBookmarks: totalBookmarks,
-            chatBookmarks: allChatBookmarks
-        };
-        
-        const dataStr = JSON.stringify(exportData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(dataBlob);
-        link.download = `bookmarks_current_character_${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        toastr.success(`현재 캐릭터의 모든 채팅 책갈피가 내보내기되었습니다. (${allChatBookmarks.length}개 채팅, 총 ${totalBookmarks}개 책갈피)`);
-        console.log('[Bookmark] 현재 캐릭터 북마크 내보내기 완료');
-    } catch (error) {
-        console.error('[Bookmark] 데이터 내보내기 실패:', error);
-        toastr.error('데이터 내보내기 중 오류가 발생했습니다.');
-    }
-}
 
 /**
  * 모든 캐릭터의 모든 채팅 북마크 내보내기 (인덱스 기반 최적화)
@@ -1258,31 +1151,22 @@ async function exportAllCharactersBookmarks() {
 }
 
 /**
- * 책갈피 데이터 내보내기 - 사용자가 범위 선택
+ * 책갈피 데이터 내보내기
  */
 async function exportBookmarkData() {
     try {
-        // 사용자에게 내보내기 범위 선택 옵션 제공
-        const choice = await callGenericPopup(
-            '어느 범위의 책갈피를 내보내시겠습니까?',
-            POPUP_TYPE.CONFIRM,
-            '',
-            { 
-                okButton: '현재 캐릭터의 모든 채팅',
-                cancelButton: '모든 캐릭터의 모든 채팅'
-            }
+        // 확인 팝업
+        const result = await callGenericPopup(
+            '모든 캐릭터의 책갈피를 내보내시겠습니까?',
+            POPUP_TYPE.CONFIRM
         );
         
-        if (choice === POPUP_RESULT.AFFIRMATIVE) {
-            // 현재 캐릭터만
-            await exportCurrentCharacterBookmarks();
-        } else {
-            // 모든 캐릭터
+        if (result === POPUP_RESULT.AFFIRMATIVE) {
             await exportAllCharactersBookmarks();
         }
         
     } catch (error) {
-        console.error('[Bookmark] 내보내기 범위 선택 중 오류:', error);
+        console.error('[Bookmark] 내보내기 중 오류:', error);
         toastr.error('내보내기 중 오류가 발생했습니다.');
     }
 }
@@ -1723,10 +1607,10 @@ function importBookmarkData() {
                         
                         if (result.importedCount > 0) {
                             toastr.success(`${result.importedCount}개의 책갈피를 불러왔습니다.${result.duplicatedCount > 0 ? ` (중복 ${result.duplicatedCount}개 제외)` : ''}`);
-                        setTimeout(() => createBookmarkListModal(), 100);
-                    } else {
-                        toastr.info('새로운 책갈피가 없습니다. (모두 중복)');
-                    }
+                            refreshBookmarkListInModal();
+                        } else {
+                            toastr.info('새로운 책갈피가 없습니다. (모두 중복)');
+                        }
                     
                         console.log(`[Bookmark] v1.0 데이터 불러오기 완료 - 추가: ${result.importedCount}, 중복: ${result.duplicatedCount}`);
                         return;
@@ -1746,7 +1630,7 @@ function importBookmarkData() {
                         // 현재 채팅 북마크 새로고침
                         loadBookmarks();
                         refreshBookmarkIcons();
-                        setTimeout(() => createBookmarkListModal(), 100);
+                        refreshBookmarkListInModal();
                         
                         return;
                     }
@@ -1769,7 +1653,7 @@ function importBookmarkData() {
                         // 현재 채팅 북마크 새로고침
                         loadBookmarks();
                         refreshBookmarkIcons();
-                        setTimeout(() => createBookmarkListModal(), 100);
+                        refreshBookmarkListInModal();
                         
                         return;
                     }
