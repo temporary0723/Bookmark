@@ -50,6 +50,268 @@ let bookmarks = [];
 // 현재 열린 모달
 let currentModal = null;
 
+// Extension Settings에 북마크 인덱스 초기화
+function initializeBookmarkIndex() {
+    if (!extension_settings[pluginName]) {
+        extension_settings[pluginName] = {
+            bookmarkIndex: {},
+            version: '1.0'
+        };
+        saveSettingsDebounced();
+    }
+    
+    // 기존 설정에 bookmarkIndex가 없으면 추가
+    if (!extension_settings[pluginName].bookmarkIndex) {
+        extension_settings[pluginName].bookmarkIndex = {};
+        saveSettingsDebounced();
+    }
+}
+
+// 북마크 인덱스 업데이트
+function updateBookmarkIndex(characterId, chatId, bookmarkCount) {
+    if (characterId === undefined || chatId === undefined) {
+        console.warn('[Bookmark] 인덱스 업데이트 실패: characterId 또는 chatId가 정의되지 않음');
+        return;
+    }
+    
+    initializeBookmarkIndex();
+    
+    const characterKey = characterId.toString();
+    const chatKey = chatId.toString();
+    
+    if (!extension_settings[pluginName].bookmarkIndex[characterKey]) {
+        extension_settings[pluginName].bookmarkIndex[characterKey] = {};
+    }
+    
+    if (bookmarkCount > 0) {
+        extension_settings[pluginName].bookmarkIndex[characterKey][chatKey] = {
+            count: bookmarkCount,
+            lastUpdated: new Date().toISOString()
+        };
+    } else {
+        // 책갈피가 없으면 인덱스에서 제거
+        delete extension_settings[pluginName].bookmarkIndex[characterKey][chatKey];
+        
+        // 캐릭터에 채팅이 없으면 캐릭터도 제거
+        if (Object.keys(extension_settings[pluginName].bookmarkIndex[characterKey]).length === 0) {
+            delete extension_settings[pluginName].bookmarkIndex[characterKey];
+        }
+    }
+    
+    saveSettingsDebounced();
+    console.log(`[Bookmark] 인덱스 업데이트: 캐릭터 ${characterId}, 채팅 ${chatId}, 북마크 수: ${bookmarkCount}`);
+}
+
+// 북마크 인덱스 조회
+function getBookmarkIndex() {
+    initializeBookmarkIndex();
+    return extension_settings[pluginName].bookmarkIndex || {};
+}
+
+// 빠른 전체 북마크 요약 정보
+function getBookmarkIndexSummary() {
+    const index = getBookmarkIndex();
+    const summary = {
+        totalCharacters: Object.keys(index).length,
+        totalChats: 0,
+        totalBookmarks: 0,
+        characterList: []
+    };
+    
+    for (const [characterId, chats] of Object.entries(index)) {
+        const chatCount = Object.keys(chats).length;
+        const bookmarkCount = Object.values(chats).reduce((sum, chat) => sum + chat.count, 0);
+        
+        summary.totalChats += chatCount;
+        summary.totalBookmarks += bookmarkCount;
+        summary.characterList.push({
+            characterId: parseInt(characterId),
+            chatCount,
+            bookmarkCount
+        });
+    }
+    
+    return summary;
+}
+
+/**
+ * 모든 캐릭터의 북마크 데이터 완전 삭제 (위험한 기능)
+ */
+async function deleteAllBookmarksFromAllCharacters() {
+    try {
+        // 첫 번째 확인: 기본 경고
+        const firstConfirm = await callGenericPopup(
+            '⚠️ 위험한 작업 ⚠️\n\n모든 캐릭터의 모든 채팅에서 책갈피를 완전히 삭제합니다.\n이 작업은 되돌릴 수 없습니다!\n\n계속하시겠습니까?',
+            POPUP_TYPE.CONFIRM
+        );
+        
+        if (firstConfirm !== POPUP_RESULT.AFFIRMATIVE) {
+            return;
+        }
+        
+        // 인덱스 요약 정보 표시
+        const summary = getBookmarkIndexSummary();
+        
+        // 두 번째 확인: 구체적인 삭제 대상 정보 제공
+        const secondConfirm = await callGenericPopup(
+            `삭제될 데이터:\n• ${summary.totalCharacters}개 캐릭터\n• ${summary.totalChats}개 채팅\n• ${summary.totalBookmarks}개 책갈피\n\n데이터를 먼저 백업하는 것을 강력히 권장합니다.\n\n정말로 모든 책갈피를 삭제하시겠습니까?`,
+            POPUP_TYPE.CONFIRM
+        );
+        
+        if (secondConfirm !== POPUP_RESULT.AFFIRMATIVE) {
+            return;
+        }
+        
+        // 세 번째 확인: 텍스트 입력으로 최종 확인
+        const finalConfirm = await callGenericPopup(
+            '최종 확인을 위해 "모든 책갈피 삭제"를 정확히 입력해주세요:',
+            POPUP_TYPE.INPUT,
+            ''
+        );
+        
+        if (finalConfirm !== '모든 책갈피 삭제') {
+            toastr.warning('입력이 정확하지 않아 삭제가 취소되었습니다.');
+            return;
+        }
+        
+        // 삭제 진행
+        toastr.info('모든 캐릭터의 책갈피를 삭제하고 있습니다...');
+        
+        const context = getContext();
+        if (!context || !context.characters || !Array.isArray(context.characters)) {
+            toastr.error('캐릭터 목록을 찾을 수 없습니다.');
+            return;
+        }
+        
+        const bookmarkIndex = getBookmarkIndex();
+        let deletedCharacters = 0;
+        let deletedChats = 0;
+        let totalErrors = 0;
+        
+        // 인덱스에 있는 모든 캐릭터의 북마크 삭제
+        for (const [characterIdStr, characterChats] of Object.entries(bookmarkIndex)) {
+            const charIndex = parseInt(characterIdStr);
+            const character = context.characters[charIndex];
+            
+            if (!character || !character.name || !character.avatar) {
+                console.warn(`[Bookmark] 캐릭터 ID ${charIndex}를 찾을 수 없습니다.`);
+                continue;
+            }
+            
+            console.log(`[Bookmark] 캐릭터 "${character.name}" 북마크 삭제 중...`);
+            
+            for (const [chatId] of Object.entries(characterChats)) {
+                try {
+                    // 현재 캐릭터의 현재 채팅인 경우
+                    if (charIndex === context.characterId && chatId === context.chatId) {
+                        // 메모리에서 삭제
+                        bookmarks.length = 0;
+                        saveBookmarks(); // 인덱스도 자동으로 업데이트됨
+                        deletedChats++;
+                        continue;
+                    }
+                    
+                    // 다른 채팅의 메타데이터에서 북마크 삭제
+                    const chatRequestBody = {
+                        ch_name: character.name,
+                        file_name: chatId.replace('.jsonl', ''),
+                        avatar_url: character.avatar
+                    };
+                    
+                    const chatResponse = await fetch('/api/chats/get', {
+                        method: 'POST',
+                        headers: getRequestHeaders(),
+                        body: JSON.stringify(chatRequestBody)
+                    });
+                    
+                    if (!chatResponse.ok) {
+                        console.warn(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatId} 가져오기 실패`);
+                        totalErrors++;
+                        continue;
+                    }
+                    
+                    const chatData = await chatResponse.json();
+                    
+                    if (!Array.isArray(chatData) || chatData.length === 0) {
+                        console.warn(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatId} 데이터가 비어있음`);
+                        totalErrors++;
+                        continue;
+                    }
+                    
+                    // 메타데이터에서 북마크 제거
+                    const firstItem = chatData[0];
+                    if (typeof firstItem === 'object' && firstItem !== null) {
+                        const chatMetadata = firstItem.chat_metadata || firstItem;
+                        
+                        // 북마크가 있는 경우에만 삭제 진행
+                        if (chatMetadata[BOOKMARK_METADATA_KEY]) {
+                            delete chatMetadata[BOOKMARK_METADATA_KEY];
+                            
+                            // 업데이트된 채팅 데이터 구성
+                            const updatedFirstItem = {
+                                ...firstItem,
+                                chat_metadata: chatMetadata
+                            };
+                            
+                            const updatedChatData = [updatedFirstItem, ...chatData.slice(1)];
+                            
+                            // 서버에 저장
+                            const saveRequestBody = {
+                                ch_name: character.name,
+                                file_name: chatId.replace('.jsonl', ''),
+                                avatar_url: character.avatar,
+                                chat: updatedChatData,
+                                force: true
+                            };
+                            
+                            const saveResponse = await fetch('/api/chats/save', {
+                                method: 'POST',
+                                headers: getRequestHeaders(),
+                                body: JSON.stringify(saveRequestBody)
+                            });
+                            
+                            if (!saveResponse.ok) {
+                                console.error(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatId} 저장 실패`);
+                                totalErrors++;
+                            } else {
+                                deletedChats++;
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatId} 삭제 중 오류:`, error);
+                    totalErrors++;
+                }
+            }
+            
+            deletedCharacters++;
+        }
+        
+        // 인덱스 완전 초기화
+        extension_settings[pluginName].bookmarkIndex = {};
+        saveSettingsDebounced();
+        
+        // UI 새로고침
+        refreshBookmarkIcons();
+        
+        if (totalErrors === 0) {
+            toastr.success(`모든 책갈피 삭제 완료!\n• ${deletedCharacters}개 캐릭터\n• ${deletedChats}개 채팅에서 책갈피가 삭제되었습니다.`);
+        } else {
+            toastr.warning(`책갈피 삭제 완료 (일부 오류 발생)\n• ${deletedCharacters}개 캐릭터\n• ${deletedChats}개 채팅에서 삭제 성공\n• ${totalErrors}개 오류 발생`);
+        }
+        
+        console.log(`[Bookmark] 전체 삭제 완료 - 캐릭터: ${deletedCharacters}, 채팅: ${deletedChats}, 오류: ${totalErrors}`);
+        
+        // 모달 새로고침
+        setTimeout(() => createBookmarkListModal(), 100);
+        
+    } catch (error) {
+        console.error('[Bookmark] 전체 삭제 중 오류:', error);
+        toastr.error('전체 삭제 중 오류가 발생했습니다.');
+    }
+}
+
 /**
  * 기존 localStorage의 북마크를 현재 채팅으로 마이그레이션
  */
@@ -157,6 +419,9 @@ function saveBookmarks() {
         
         // 메타데이터 변경사항 저장
         saveMetadataDebounced();
+        
+        // 인덱스 업데이트
+        updateBookmarkIndex(context.characterId, context.chatId, bookmarks.length);
         
         console.log(`[Bookmark] 현재 채팅에 ${bookmarks.length}개의 북마크를 저장했습니다.`);
     } catch (error) {
@@ -340,7 +605,7 @@ function deleteBookmark(bookmarkId) {
     const index = bookmarks.findIndex(b => b.id === bookmarkId);
     if (index !== -1) {
         bookmarks.splice(index, 1);
-        saveBookmarks();
+        saveBookmarks(); // 이 함수에서 인덱스도 자동으로 업데이트됨
     }
 }
 
@@ -382,6 +647,10 @@ async function createBookmarkListModal() {
                         <button class="bookmark-export-btn" title="책갈피 데이터 내보내기">
                             <i class="fa-solid fa-file-export"></i>
                             <span>데이터 내보내기</span>
+                        </button>
+                        <button class="bookmark-delete-all-btn" title="모든 캐릭터의 책갈피 완전 삭제" style="background-color: #dc3545; border-color: #dc3545; color: white; margin-left: 10px;">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>전체 삭제</span>
                         </button>
                     </div>
                     ${bookmarks.length === 0 
@@ -463,6 +732,12 @@ async function createBookmarkListModal() {
     currentModal.find('.bookmark-export-btn').on('click', function(e) {
         e.stopPropagation();
         exportBookmarkData();
+    });
+
+    // 전체 삭제 버튼 이벤트
+    currentModal.find('.bookmark-delete-all-btn').on('click', function(e) {
+        e.stopPropagation();
+        deleteAllBookmarksFromAllCharacters();
     });
 
     // 수정 버튼 (이름만 수정)
@@ -594,7 +869,7 @@ async function confirmDeleteBookmark(bookmarkId) {
 }
 
 /**
- * 모든 캐릭터의 모든 채팅에서 북마크 데이터 수집
+ * 모든 캐릭터의 모든 채팅에서 북마크 데이터 수집 (인덱스 기반 최적화)
  */
 async function collectAllBookmarksFromAllCharacters() {
     const context = getContext();
@@ -614,49 +889,43 @@ async function collectAllBookmarksFromAllCharacters() {
             }];
         }
 
-        console.log(`[Bookmark] 총 ${context.characters.length}개 캐릭터의 북마크를 수집합니다...`);
+        // 인덱스를 사용하여 북마크가 있는 캐릭터들만 찾기
+        const bookmarkIndex = getBookmarkIndex();
+        const charactersWithBookmarks = Object.keys(bookmarkIndex);
+        
+        if (charactersWithBookmarks.length === 0) {
+            console.log('[Bookmark] 인덱스에서 북마크가 있는 캐릭터를 찾지 못했습니다.');
+            return [];
+        }
+
+        console.log(`[Bookmark] 인덱스 기반 수집: ${charactersWithBookmarks.length}개 캐릭터에서 북마크를 수집합니다...`);
         let totalProcessedChats = 0;
         let totalBookmarks = 0;
 
-        for (let charIndex = 0; charIndex < context.characters.length; charIndex++) {
+        for (const characterIdStr of charactersWithBookmarks) {
+            const charIndex = parseInt(characterIdStr);
             const character = context.characters[charIndex];
+            
             if (!character || !character.name || !character.avatar) {
+                console.warn(`[Bookmark] 캐릭터 ID ${charIndex}에 해당하는 캐릭터를 찾을 수 없습니다.`);
                 continue;
             }
 
             try {
-                console.log(`[Bookmark] 캐릭터 "${character.name}" 처리 중... (${charIndex + 1}/${context.characters.length})`);
-
-                // 현재 캐릭터의 모든 채팅 목록 가져오기
-                const requestBody = { avatar_url: character.avatar };
-                const response = await fetch('/api/characters/chats', {
-                    method: 'POST',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) {
-                    console.warn(`[Bookmark] 캐릭터 "${character.name}" 채팅 목록 가져오기 실패: ${response.status}`);
-                    continue;
-                }
-
-                const chatList = await response.json();
-                console.log(`[Bookmark] 캐릭터 "${character.name}": ${chatList.length}개 채팅 발견`);
+                console.log(`[Bookmark] 캐릭터 "${character.name}" 처리 중... (인덱스 ID: ${charIndex})`);
 
                 const characterChatBookmarks = [];
+                const characterChats = bookmarkIndex[characterIdStr];
 
-                // 각 채팅의 메타데이터에서 북마크 수집
-                for (const chatInfo of chatList) {
+                // 인덱스에 있는 채팅들만 처리
+                for (const [chatId, indexInfo] of Object.entries(characterChats)) {
                     try {
-                        const chatFileName = chatInfo.file_name || chatInfo.fileName;
-                        if (!chatFileName) continue;
-
                         // 현재 캐릭터의 현재 채팅인 경우 메모리의 북마크 사용
-                        if (charIndex === context.characterId && chatFileName === context.chatId) {
+                        if (charIndex === context.characterId && chatId === context.chatId) {
                             if (bookmarks.length > 0) {
                                 characterChatBookmarks.push({
-                                    chatName: chatInfo.chat_name || chatInfo.name || chatFileName,
-                                    fileName: chatFileName,
+                                    chatName: '현재 채팅',
+                                    fileName: chatId,
                                     bookmarks: [...bookmarks],
                                     isCurrent: true
                                 });
@@ -669,7 +938,7 @@ async function collectAllBookmarksFromAllCharacters() {
                         // 다른 채팅의 메타데이터 가져오기
                         const chatRequestBody = {
                             ch_name: character.name,
-                            file_name: chatFileName.replace('.jsonl', ''),
+                            file_name: chatId.replace('.jsonl', ''),
                             avatar_url: character.avatar
                         };
 
@@ -680,7 +949,7 @@ async function collectAllBookmarksFromAllCharacters() {
                         });
 
                         if (!chatResponse.ok) {
-                            console.warn(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatFileName} 데이터 가져오기 실패`);
+                            console.warn(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatId} 데이터 가져오기 실패: ${chatResponse.status}`);
                             continue;
                         }
 
@@ -701,18 +970,43 @@ async function collectAllBookmarksFromAllCharacters() {
                             : [];
 
                         if (Array.isArray(chatBookmarks) && chatBookmarks.length > 0) {
+                            // 채팅 이름 추출 시도
+                            let chatName = chatId;
+                            try {
+                                // 캐릭터의 채팅 목록에서 이름 찾기
+                                const chatListResponse = await fetch('/api/characters/chats', {
+                                    method: 'POST',
+                                    headers: getRequestHeaders(),
+                                    body: JSON.stringify({ avatar_url: character.avatar })
+                                });
+                                
+                                if (chatListResponse.ok) {
+                                    const chatList = await chatListResponse.json();
+                                    const chatInfo = chatList.find(c => 
+                                        (c.file_name || c.fileName) === chatId || 
+                                        (c.file_name || c.fileName) === chatId + '.jsonl'
+                                    );
+                                    if (chatInfo) {
+                                        chatName = chatInfo.chat_name || chatInfo.name || chatId;
+                                    }
+                                }
+                            } catch (nameError) {
+                                console.warn(`[Bookmark] 채팅 이름 가져오기 실패: ${nameError.message}`);
+                            }
+
                             characterChatBookmarks.push({
-                                chatName: chatInfo.chat_name || chatInfo.name || chatFileName,
-                                fileName: chatFileName,
+                                chatName: chatName,
+                                fileName: chatId,
                                 bookmarks: chatBookmarks
                             });
                             totalBookmarks += chatBookmarks.length;
+                            console.log(`[Bookmark] 캐릭터 "${character.name}" 채팅 "${chatName}": ${chatBookmarks.length}개 북마크 수집`);
                         }
 
                         totalProcessedChats++;
 
                     } catch (error) {
-                        console.error(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatInfo.file_name || 'unknown'} 처리 중 오류:`, error);
+                        console.error(`[Bookmark] 캐릭터 "${character.name}" 채팅 ${chatId} 처리 중 오류:`, error);
                     }
                 }
 
@@ -731,7 +1025,7 @@ async function collectAllBookmarksFromAllCharacters() {
             }
         }
 
-        console.log(`[Bookmark] 수집 완료: ${allCharacterBookmarks.length}개 캐릭터, ${totalProcessedChats}개 채팅, 총 ${totalBookmarks}개 북마크`);
+        console.log(`[Bookmark] 인덱스 기반 수집 완료: ${allCharacterBookmarks.length}개 캐릭터, ${totalProcessedChats}개 채팅, 총 ${totalBookmarks}개 북마크`);
         return allCharacterBookmarks;
 
     } catch (error) {
@@ -909,11 +1203,19 @@ async function exportCurrentCharacterBookmarks() {
 }
 
 /**
- * 모든 캐릭터의 모든 채팅 북마크 내보내기
+ * 모든 캐릭터의 모든 채팅 북마크 내보내기 (인덱스 기반 최적화)
  */
 async function exportAllCharactersBookmarks() {
     try {
-        toastr.info('모든 캐릭터의 책갈피를 수집하고 있습니다... 시간이 오래 걸릴 수 있습니다.');
+        // 인덱스 요약으로 빠른 미리보기
+        const indexSummary = getBookmarkIndexSummary();
+        
+        if (indexSummary.totalCharacters === 0) {
+            toastr.warning('내보낼 책갈피가 없습니다.');
+            return;
+        }
+        
+        toastr.info(`인덱스 기반 수집: ${indexSummary.totalCharacters}개 캐릭터의 책갈피를 수집하고 있습니다... (기존 방식보다 훨씬 빠릅니다!)`);
         
         const allCharacterBookmarks = await collectAllBookmarksFromAllCharacters();
         
@@ -935,7 +1237,8 @@ async function exportAllCharactersBookmarks() {
             totalCharacters: allCharacterBookmarks.length,
             totalChats: totalChats,
             totalBookmarks: totalBookmarks,
-            characterBookmarks: allCharacterBookmarks
+            characterBookmarks: allCharacterBookmarks,
+            exportMethod: 'index_optimized' // 최적화 방식 표시
         };
         
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -946,8 +1249,8 @@ async function exportAllCharactersBookmarks() {
         link.download = `bookmarks_all_characters_${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         
-        toastr.success(`모든 캐릭터의 책갈피가 내보내기되었습니다. (${allCharacterBookmarks.length}개 캐릭터, ${totalChats}개 채팅, 총 ${totalBookmarks}개 책갈피)`);
-        console.log('[Bookmark] 모든 캐릭터 북마크 내보내기 완료');
+        toastr.success(`모든 캐릭터의 책갈피가 내보내기되었습니다. (${allCharacterBookmarks.length}개 캐릭터, ${totalChats}개 채팅, 총 ${totalBookmarks}개 책갈피) ⚡ 인덱스 최적화 적용`);
+        console.log('[Bookmark] 모든 캐릭터 북마크 내보내기 완료 (인덱스 기반)');
     } catch (error) {
         console.error('[Bookmark] 데이터 내보내기 실패:', error);
         toastr.error('데이터 내보내기 중 오류가 발생했습니다.');
@@ -1560,6 +1863,13 @@ function handleChatChanged() {
     // 새로운 채팅의 북마크를 로드
     loadBookmarks();
     
+    // 현재 채팅의 북마크 인덱스 동기화
+    const context = getContext();
+    if (context && context.characterId !== undefined && context.chatId !== undefined) {
+        updateBookmarkIndex(context.characterId, context.chatId, bookmarks.length);
+        console.log(`[Bookmark] 채팅 변경 후 인덱스 동기화: 캐릭터 ${context.characterId}, 채팅 ${context.chatId}, 북마크 ${bookmarks.length}개`);
+    }
+    
     // UI 업데이트
     setTimeout(() => {
         addBookmarkIconsToMessages();
@@ -1591,9 +1901,19 @@ async function addToWandMenu() {
 function initializeBookmarkManager() {
     console.log('[Bookmark] === 북마크 매니저 초기화 시작 ===');
     
+    // Extension Settings 초기화
+    initializeBookmarkIndex();
+    console.log('[Bookmark] Extension Settings 초기화 완료');
+    
     // 북마크 데이터 로드
     loadBookmarks();
     console.log(`[Bookmark] 북마크 데이터 로드 완료: ${bookmarks.length}개`);
+    
+    // 현재 채팅의 북마크 인덱스 동기화 (로드 후)
+    const context = getContext();
+    if (context && context.characterId !== undefined && context.chatId !== undefined) {
+        updateBookmarkIndex(context.characterId, context.chatId, bookmarks.length);
+    }
     
     // 기존 메시지에 아이콘 추가
     addBookmarkIconsToMessages();
