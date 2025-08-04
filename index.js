@@ -321,6 +321,11 @@ async function createBookmarkListModal() {
         }
     });
 
+    // 설명 필드 클릭 시 이동 방지
+    currentModal.find('.bookmark-description-field').on('click', function(e) {
+        e.stopPropagation();
+    });
+
     // 수정 버튼 (이름만 수정)
     currentModal.find('.bookmark-edit-btn').on('click', function(e) {
         e.stopPropagation();
@@ -480,9 +485,9 @@ function refreshBookmarkIcons() {
             const isBookmarked = bookmarks.some(bookmark => bookmark.messageId === parseInt(messageId));
             
             if (isBookmarked) {
-                // 북마크된 메시지: fa-solid + em변수 색상
+                // 북마크된 메시지: fa-solid + quote변수 색상
                 bookmarkIcon.removeClass('fa-regular').addClass('fa-solid');
-                bookmarkIcon.css('color', 'var(--SmartThemeEmColor)');
+                bookmarkIcon.css('color', 'var(--SmartThemeQuoteColor)');
             } else {
                 // 북마크되지 않은 메시지: fa-regular + 기본 색상
                 bookmarkIcon.removeClass('fa-solid').addClass('fa-regular');

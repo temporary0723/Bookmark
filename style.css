@@ -255,20 +255,21 @@
 
 .bookmark-description-field {
     width: 100%;
-    background-color: var(--SmartThemeBlurTintColor);
+    background-color: var(--black30a);
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
     padding: 8px 12px;
     color: var(--SmartThemeBodyColor);
     font-size: 14px;
+    font-family: inherit;
     transition: all 0.2s ease;
+    cursor: text;
 }
 
 .bookmark-description-field:focus {
     outline: none;
     border-color: var(--SmartThemeQuoteColor);
-    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
-    transform: scale(1.02);
+    box-shadow: 0 0 0 2px rgba(var(--SmartThemeQuoteColorRGB), 0.3);
 }
 
 /* 북마크 액션 버튼 */
