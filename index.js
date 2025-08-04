@@ -172,6 +172,8 @@ async function deleteAllBookmarksFromAllCharacters() {
         }
         
         const bookmarkIndex = getBookmarkIndex();
+        // 원본 인덱스 저장 (현재 채팅 확인용)
+        const originalIndex = { ...bookmarkIndex };
         let deletedCharacters = 0;
         let deletedChats = 0;
         let totalErrors = 0;
@@ -280,8 +282,18 @@ async function deleteAllBookmarksFromAllCharacters() {
         extension_settings[pluginName].bookmarkIndex = {};
         saveSettingsDebounced();
         
-        // 현재 채팅의 북마크 상태를 메타데이터에서 다시 로드하여 완전히 동기화
-        loadBookmarks(); // 메타데이터가 삭제되었으므로 빈 배열이 로드됨
+        // 현재 채팅이 삭제 대상에 포함된 경우 메타데이터에서 직접 북마크 키 제거
+        const currentChatKey = `${context.characterId}_${context.chatId}`;
+        const wasCurrentChatDeleted = Object.keys(originalIndex).some(key => key === currentChatKey);
+        
+        if (wasCurrentChatDeleted) {
+            console.log('[Bookmark] 현재 채팅의 북마크도 삭제됨 - 메모리에서 직접 제거');
+            delete context.chatMetadata[BOOKMARK_METADATA_KEY];
+            bookmarks.length = 0; // 배열 완전 초기화
+        } else {
+            // 현재 채팅은 영향받지 않았으므로 기존 상태 유지
+            loadBookmarks();
+        }
         
         // UI 새로고침
         refreshBookmarkIcons();
@@ -1226,10 +1238,15 @@ async function importV3ToOriginalLocations(characterBookmarks) {
     console.log(`[Bookmark] v3.0 불러오기 시작 - 복원할 캐릭터 수: ${characterBookmarks.length}`);
     console.log(`[Bookmark] 현재 SillyTavern에 로드된 캐릭터 수: ${context.characters.length}`);
     
+    // 현재 채팅 정보 저장
+    const currentCharacterId = context.characterId;
+    const currentChatId = context.chatId;
+    
     let processedCharacters = 0;
     let processedChats = 0;
     let totalImported = 0;
     let notFoundCharacters = [];
+    let currentChatUpdated = false; // 현재 채팅 업데이트 여부
     
     for (const charData of characterBookmarks) {
         try {
@@ -1257,6 +1274,7 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                     const targetCharIndex = context.characters.indexOf(targetCharacter);
                     if (targetCharIndex === context.characterId && chatData.fileName === context.chatId) {
                         console.log(`[Bookmark] 현재 채팅으로 감지됨 - 메모리에 직접 추가`);
+                        let addedToCurrentChat = 0;
                         chatData.bookmarks.forEach(importBookmark => {
                             const exists = bookmarks.some(existing => 
                                 existing.messageId === importBookmark.messageId && 
@@ -1269,8 +1287,16 @@ async function importV3ToOriginalLocations(characterBookmarks) {
                                     id: uuidv4()
                                 });
                                 totalImported++;
+                                addedToCurrentChat++;
                             }
                         });
+                        
+                        if (addedToCurrentChat > 0) {
+                            console.log(`[Bookmark] 현재 채팅에 ${addedToCurrentChat}개 북마크 추가됨`);
+                            currentChatUpdated = true;
+                            // 현재 채팅의 메타데이터도 직접 업데이트
+                            context.chatMetadata[BOOKMARK_METADATA_KEY] = [...bookmarks];
+                        }
                         
                         bookmarks.sort((a, b) => a.messageId - b.messageId);
                         saveBookmarks();
@@ -1450,7 +1476,8 @@ async function importV3ToOriginalLocations(characterBookmarks) {
         processedCharacters, 
         processedChats, 
         totalImported, 
-        notFoundCharacters 
+        notFoundCharacters,
+        currentChatUpdated
     };
 }
 
@@ -1665,12 +1692,18 @@ function importBookmarkData() {
                         toastr.success(successMsg);
                         
                         // 현재 채팅 북마크 새로고침
-                        loadBookmarks();
+                        if (result.currentChatUpdated) {
+                            // 현재 채팅이 업데이트된 경우 이미 메모리와 메타데이터가 업데이트됨
+                            console.log('[Bookmark] 현재 채팅이 업데이트됨 - loadBookmarks 생략');
+                        } else {
+                            // 다른 채팅만 업데이트된 경우 현재 채팅 상태 재로드
+                            loadBookmarks();
+                        }
                         refreshBookmarkIcons();
                         // 메타데이터 로드 완료 후 모달 업데이트 (비동기 처리 고려)
                         setTimeout(() => {
                             refreshBookmarkListInModal();
-                        }, 100);
+                        }, 50); // 메모리 업데이트는 더 빠르므로 지연 시간 단축
                         
                         return;
                     }
