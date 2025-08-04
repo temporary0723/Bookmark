@@ -253,7 +253,7 @@ async function createBookmarkListModal() {
         <div class="bookmark-list-modal-backdrop">
             <div class="bookmark-list-modal">
                 <div class="bookmark-modal-header">
-                    <h3>북마크 목록</h3>
+                    <h3>책갈피 목록</h3>
                     <button class="bookmark-modal-close" title="닫기">×</button>
                 </div>
                 <div class="bookmark-modal-body">
