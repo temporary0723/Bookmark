@@ -1276,28 +1276,7 @@ async function importV2ToOriginalChats(chatBookmarks) {
     
     for (const chatData of chatBookmarks) {
         try {
-            if (chatData.isCurrent || chatData.fileName === context.chatId) {
-                // 현재 채팅인 경우 메모리에 직접 추가
-                chatData.bookmarks.forEach(importBookmark => {
-                    const exists = bookmarks.some(existing => 
-                        existing.messageId === importBookmark.messageId && 
-                        existing.name === importBookmark.name
-                    );
-                    
-                    if (!exists) {
-                        bookmarks.push({
-                            ...importBookmark,
-                            id: uuidv4()
-                        });
-                        totalImported++;
-                    }
-                });
-                
-                bookmarks.sort((a, b) => a.messageId - b.messageId);
-                saveBookmarks();
-                processedChats++;
-                continue;
-            }
+            // 모든 채팅을 동일한 방식으로 처리 (현재 채팅 포함)
             
             // 다른 채팅의 메타데이터 가져오기
             const chatRequestBody = {
@@ -1427,6 +1406,12 @@ async function importV2ToOriginalChats(chatBookmarks) {
                         }
                     }
                 }
+            }
+            
+            // 현재 채팅인 경우 메모리에서도 북마크를 다시 로드
+            if (chatData.isCurrent || chatData.fileName === context.chatId) {
+                console.log(`[Bookmark] 현재 채팅이므로 메모리 북마크를 다시 로드합니다.`);
+                loadBookmarks();
             }
             
             processedChats++;
