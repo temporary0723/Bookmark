@@ -309,7 +309,9 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding-right: 80px;
+    padding-right: 70px;
+    max-width: calc(100% - 70px);
+    overflow: hidden;
 }
 
 .bookmark-id {
@@ -324,6 +326,8 @@
     color: var(--SmartThemeBodyColor);
     font-size: 16px;
     line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .bookmark-description-field {
@@ -363,18 +367,25 @@
 
 .bookmark-edit-btn,
 .bookmark-delete-btn {
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 10px;
     transition: all 0.2s ease;
     background-color: var(--SmartThemeBlurTintColor);
     color: var(--SmartThemeBodyColor);
-    min-width: 30px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.bookmark-edit-btn i,
+.bookmark-delete-btn i {
+    font-size: 10px;
 }
 
 .bookmark-edit-btn:hover {
@@ -525,14 +536,22 @@
     }
     
     .bookmark-content {
-        padding-right: 70px;
+        padding-right: 55px;
+        max-width: calc(100% - 55px);
     }
     
     .bookmark-edit-btn,
     .bookmark-delete-btn {
-        min-width: 32px;
-        padding: 6px 8px;
-        font-size: 12px;
+        min-width: 22px;
+        max-width: 22px;
+        height: 22px;
+        padding: 3px 4px;
+        font-size: 9px;
+    }
+    
+    .bookmark-edit-btn i,
+    .bookmark-delete-btn i {
+        font-size: 9px;
     }
 }
 
