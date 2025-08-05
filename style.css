@@ -310,7 +310,7 @@
     flex-direction: column;
     gap: 8px;
     width: 100%;
-    padding-right: 80px;
+    padding-right: 90px;
 }
 
 .bookmark-id {
@@ -513,7 +513,7 @@
     
     .bookmark-item {
         padding: 12px;
-        padding-right: 70px;
+        padding-right: 80px;
     }
     
     .bookmark-content {
