@@ -335,11 +335,11 @@
     font-family: inherit;
     transition: all 0.2s ease;
     cursor: text;
-    height: 2.5em;
+    height: 3.5em;
     line-height: 1.2;
     resize: vertical;
-    min-height: 2.5em;
-    max-height: 4em;
+    min-height: 3.5em;
+    max-height: 5em;
 }
 
 .bookmark-description-field:focus {
