@@ -311,7 +311,7 @@
 }
 
 .bookmark-id {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--SmartThemeQuoteColor);
     font-family: inherit;
     font-weight: bold;
@@ -335,6 +335,11 @@
     font-family: inherit;
     transition: all 0.2s ease;
     cursor: text;
+    height: 2.5em;
+    line-height: 1.2;
+    resize: vertical;
+    min-height: 2.5em;
+    max-height: 4em;
 }
 
 .bookmark-description-field:focus {

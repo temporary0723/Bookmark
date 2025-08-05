@@ -531,7 +531,7 @@ function refreshBookmarkListInModal() {
             <div class="bookmark-content" data-message-id="${bookmark.messageId}">
                 <div class="bookmark-id">#${bookmark.messageId}</div>
                 <div class="bookmark-name">${bookmark.name}</div>
-                <input type="text" class="bookmark-description-field text_pole" value="${bookmark.description || ''}" placeholder="책갈피 설명을 입력하세요" data-bookmark-id="${bookmark.id}">
+                <textarea class="bookmark-description-field text_pole" placeholder="책갈피 설명을 입력하세요" data-bookmark-id="${bookmark.id}">${bookmark.description || ''}</textarea>
             </div>
             <div class="bookmark-actions">
                 <button class="bookmark-edit-btn" title="수정">
@@ -637,7 +637,7 @@ async function createBookmarkListModal() {
             <div class="bookmark-content" data-message-id="${bookmark.messageId}">
                 <div class="bookmark-id">#${bookmark.messageId}</div>
                 <div class="bookmark-name">${bookmark.name}</div>
-                <input type="text" class="bookmark-description-field text_pole" value="${bookmark.description || ''}" placeholder="책갈피 설명을 입력하세요" data-bookmark-id="${bookmark.id}">
+                <textarea class="bookmark-description-field text_pole" placeholder="책갈피 설명을 입력하세요" data-bookmark-id="${bookmark.id}">${bookmark.description || ''}</textarea>
             </div>
             <div class="bookmark-actions">
                 <button class="bookmark-edit-btn" title="수정">
