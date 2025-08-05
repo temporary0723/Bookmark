@@ -294,6 +294,7 @@
     background-color: var(--black30a);
     transition: all 0.2s ease;
     cursor: pointer;
+    position: relative;
 }
 
 .bookmark-item:hover {
@@ -308,10 +309,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding-right: 80px;
 }
 
 .bookmark-id {
-    font-size: 12px;
+    font-size: 16px;
     color: var(--SmartThemeQuoteColor);
     font-family: inherit;
     font-weight: bold;
@@ -335,6 +337,11 @@
     font-family: inherit;
     transition: all 0.2s ease;
     cursor: text;
+    resize: vertical;
+    min-height: 40px;
+    max-height: 80px;
+    line-height: 1.4;
+    overflow-y: auto;
 }
 
 .bookmark-description-field:focus {
@@ -346,23 +353,25 @@
 /* 북마크 액션 버튼 */
 .bookmark-actions {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-left: 15px;
+    flex-direction: row;
+    gap: 5px;
+    position: absolute;
+    top: 15px;
+    right: 15px;
     flex-shrink: 0;
 }
 
 .bookmark-edit-btn,
 .bookmark-delete-btn {
-    padding: 8px 10px;
+    padding: 6px 8px;
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     transition: all 0.2s ease;
     background-color: var(--SmartThemeBlurTintColor);
     color: var(--SmartThemeBodyColor);
-    min-width: 36px;
+    min-width: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -506,11 +515,17 @@
     }
     
     .bookmark-actions {
+        position: absolute;
+        top: 12px;
+        right: 12px;
         margin-left: 0;
-        margin-top: 10px;
-        align-self: flex-end;
+        margin-top: 0;
         flex-direction: row;
         gap: 5px;
+    }
+    
+    .bookmark-content {
+        padding-right: 70px;
     }
     
     .bookmark-edit-btn,
