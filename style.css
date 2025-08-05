@@ -309,8 +309,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding-right: 70px;
-    max-width: calc(100% - 70px);
+    padding-right: 50px;
+    max-width: calc(100% - 50px);
     overflow: hidden;
 }
 
@@ -358,7 +358,7 @@
 .bookmark-actions {
     display: flex;
     flex-direction: row;
-    gap: 5px;
+    gap: 3px;
     position: absolute;
     top: 15px;
     right: 15px;
@@ -532,12 +532,12 @@
         margin-left: 0;
         margin-top: 0;
         flex-direction: row;
-        gap: 5px;
+        gap: 3px;
     }
     
     .bookmark-content {
-        padding-right: 55px;
-        max-width: calc(100% - 55px);
+        padding-right: 40px;
+        max-width: calc(100% - 40px);
     }
     
     .bookmark-edit-btn,
