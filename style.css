@@ -455,6 +455,23 @@
     .bookmark-cancel-btn {
         width: 100%;
     }
+    
+    .bookmark-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .bookmark-content {
+        width: 100%;
+    }
+    
+    .bookmark-actions {
+        margin-left: 0;
+        margin-top: 10px;
+        align-self: flex-end;
+        flex-direction: row;
+        gap: 8px;
+    }
 }
 
 /* 스마트폰 반응형 디자인 */
@@ -508,6 +525,10 @@
         flex-direction: column;
         align-items: flex-start;
         padding: 12px;
+    }
+    
+    .bookmark-content {
+        width: 100%;
     }
     
     .bookmark-actions {
