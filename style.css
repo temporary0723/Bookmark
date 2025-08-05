@@ -289,11 +289,13 @@
     display: flex;
     align-items: flex-start;
     padding: 15px;
+    padding-right: 90px;
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 8px;
     background-color: var(--black30a);
     transition: all 0.2s ease;
     cursor: pointer;
+    position: relative;
 }
 
 .bookmark-item:hover {
@@ -303,8 +305,7 @@
 }
 
 .bookmark-content {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -353,10 +354,9 @@
     display: flex;
     flex-direction: row;
     gap: 8px;
-    margin-left: 8px;
-    flex-shrink: 0;
-    align-self: flex-start;
-    margin-top: -2px;
+    position: absolute;
+    top: 15px;
+    right: 15px;
 }
 
 .bookmark-edit-btn,
@@ -459,20 +459,13 @@
     }
     
     .bookmark-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .bookmark-content {
-        width: 100%;
+        padding-right: 80px;
     }
     
     .bookmark-actions {
-        margin-left: 0;
-        margin-top: -2px;
-        align-self: flex-start;
-        flex-direction: row;
-        gap: 8px;
+        top: 12px;
+        right: 12px;
+        gap: 6px;
     }
 }
 
@@ -524,21 +517,14 @@
     }
     
     .bookmark-item {
-        flex-direction: column;
-        align-items: flex-start;
         padding: 12px;
-    }
-    
-    .bookmark-content {
-        width: 100%;
+        padding-right: 75px;
     }
     
     .bookmark-actions {
-        margin-left: 0;
-        margin-top: -2px;
-        align-self: flex-start;
-        flex-direction: row;
-        gap: 5px;
+        top: 12px;
+        right: 12px;
+        gap: 4px;
     }
     
     .bookmark-edit-btn,
